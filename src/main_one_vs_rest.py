@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
-from one_vs_rest import KernelSVC, MulticlassSVC
-from kernels import RBF, Linear
+from methods.one_vs_rest import KernelSVC, MulticlassSVC
+from util.kernels import RBF, Linear
 from sklearn.model_selection import train_test_split
-import utils as ut
+import util.utils as ut
 
 # Import the data
 data_path = 'data/'

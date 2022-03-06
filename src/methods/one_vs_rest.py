@@ -1,9 +1,9 @@
 ''' Implements k binary classifiers for multiclass classfication based on one-vs-other strategy'''
 
-from kernels import RBF, Linear
 import numpy as np
 import scipy as sp
 from scipy import optimize
+
 
 class KernelSVC :
 
