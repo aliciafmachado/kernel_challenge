@@ -19,7 +19,7 @@ class PCA():
         The data is supposed to be centered in 0
         """
         cov_m = np.cov(X.T)
-        eigenvalues, eigenvectors = np.linalg.eig(cov_m)
+        eigenvalues, eigenvectors = np.linalg.eigh(cov_m)
         idx = eigenvalues.argsort()[::-1]
         eigenvalues = eigenvalues[idx]
         eigenvectors = eigenvectors[:, idx]
