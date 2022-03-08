@@ -4,13 +4,15 @@ from methods.one_vs_rest import KernelSVC, MulticlassSVC
 from util.kernels import RBF, Linear
 from sklearn.model_selection import train_test_split
 import util.utils as ut
+from util.input import read_data
 
 # Import the data
 data_path = 'data/'
+
+Xtr,Ytr,Xte = read_data(data_path)
+
 nb_points = 1000 # For the first test use less points to limit computation time
-Xtr = np.array(pd.read_csv(data_path + 'Xtr.csv',header=None,sep=',',usecols=range(3072)))[:nb_points]
-Xte = np.array(pd.read_csv(data_path + 'Xte.csv',header=None,sep=',',usecols=range(3072)))
-Ytr = np.array(pd.read_csv(data_path + 'Ytr.csv',sep=',',usecols=[1])).squeeze()[:nb_points]
+Xtr, Ytr = Xtr[:nb_points], Ytr[:nb_points]
 
 # Undersample
 # Xtr = ut.undersample(Xtr)
