@@ -24,10 +24,11 @@ def images_to_pca(train, n_components):
 def undersample(train):
     return train[:,::2]
 
-def read_data(data_path="data"):
+def read_data(data_path="data/"):
     """
     Read the data from the data_path.
     """
+
     Xtr = np.array(pd.read_csv(data_path + 'Xtr.csv',header=None,sep=',',usecols=range(3072)))
     Xte = np.array(pd.read_csv(data_path + 'Xte.csv',header=None,sep=',',usecols=range(3072)))
     Ytr = np.array(pd.read_csv(data_path + 'Ytr.csv',sep=',',usecols=[1])).squeeze()
