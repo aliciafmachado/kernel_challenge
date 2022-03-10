@@ -4,6 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from sklearn.decomposition import PCA
 import pandas as pd
+import os
 
 
 def accuracy(y, pred):
@@ -28,9 +29,9 @@ def read_data(data_path="data"):
     """
     Read the data from the data_path.
     """
-    Xtr = np.array(pd.read_csv(data_path + 'Xtr.csv',header=None,sep=',',usecols=range(3072)))
-    Xte = np.array(pd.read_csv(data_path + 'Xte.csv',header=None,sep=',',usecols=range(3072)))
-    Ytr = np.array(pd.read_csv(data_path + 'Ytr.csv',sep=',',usecols=[1])).squeeze()
+    Xtr = np.array(pd.read_csv(os.path.join(data_path, 'Xtr.csv'),header=None,sep=',',usecols=range(3072)))
+    Xte = np.array(pd.read_csv(os.path.join(data_path, 'Xte.csv'),header=None,sep=',',usecols=range(3072)))
+    Ytr = np.array(pd.read_csv(os.path.join(data_path, 'Ytr.csv'),sep=',',usecols=[1])).squeeze()
 
     return Xtr, Ytr, Xte
 
@@ -43,6 +44,6 @@ def save_results(Yte, results_name="Yte_pred.csv", results_path="data"):
     Yte = {'Prediction' : Yte}
     dataframe = pd.DataFrame(Yte)
     dataframe.index += 1
-    dataframe.to_csv('Yte_pred.csv',index_label='Id')
+    dataframe.to_csv(results_name, index_label='Id')
 
     print("Results ready for submission!")
