@@ -25,7 +25,7 @@ def images_to_pca(train, n_components):
 def undersample(train):
     return train[:,::2]
 
-def read_data(data_path="data"):
+def read_data(data_path="data/"):
     """
     Read the data from the data_path.
     """

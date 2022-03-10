@@ -28,7 +28,7 @@ class KernelSVC :
         s = np.kron(np.array([self.C, 0]), np.ones(N))
         if class_weights is not None :
             s[:N] *= (y == 1)*class_weights[0] + (y == -1)*class_weights[1]
-        print(s)
+        print("s[:N] = ", s[:N])
 
         # Lagrange dual problem
         def loss(alpha) :
@@ -103,7 +103,7 @@ class MulticlassSVC :
             self.classifiers.append(KernelSVC(self.C[i],kernel,epsilon))
 
 
-    def fit(self,Xtrain,Y_train, verbose= False):
+    def fit(self,Xtrain,Y_train, verbose= False, use_weights = True):
 
         '''Fit all the classifiers individually'''
 
@@ -112,7 +112,11 @@ class MulticlassSVC :
                 print(f'Fitting classifier {i}')
             Ybinary = 2*(Y_train == i) - 1
             svc = self.classifiers[i]
-            svc.fit(Xtrain, Ybinary, verbose = verbose)
+            if use_weights:
+                class_weights = [len(Ybinary) / np.sum(Ybinary == 1), len(Ybinary) / np.sum(Ybinary == -1)]
+            else :
+                class_weights = None
+            svc.fit(Xtrain, Ybinary, verbose=verbose, class_weights=class_weights)
         return
 
     def predict(self, Xtrain):
