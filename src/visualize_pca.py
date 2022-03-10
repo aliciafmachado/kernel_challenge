@@ -5,15 +5,16 @@ from util.utils import read_data
 from util.kernels import RBF, Linear
 from methods.kernel_pca import Kernel_PCA
 from sklearn.decomposition import KernelPCA
+from sklearn.metrics.pairwise import rbf_kernel
 import numpy as np
 import os
 
 
 def main():
     save_path = "results/unsupervised_learning"
-    kernel_fn = Linear().kernel
-    # kernel_fn = RBF(sigma=1./X.shape[1]).kernel
     Xtr_, Ytr, Xte_ = read_data()
+    # kernel_fn = Linear().kernel
+    kernel_fn = RBF(sigma=40).kernel
 
     # Normalize first
     mean = np.mean(Xtr_, axis=0)
