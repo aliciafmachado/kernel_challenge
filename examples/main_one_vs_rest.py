@@ -11,8 +11,12 @@ data_path = '../data/'
 
 Xtr,Ytr,Xte = ut.read_data(data_path)
 
-nb_points = 5000 # For the first test use less points to limit computation time
-Xtr, Ytr = Xtr[:nb_points], Ytr[:nb_points]
+
+nb_points = 2000 # For the first test use less points to limit computation time
+idx = np.random.choice(np.arange(len(Xtr)), size=nb_points)
+Xtr, Ytr = Xtr[idx], Ytr[idx]
+
+Xtr = ut.rgb_to_grayscale(Xtr)
 
 Xtr,Xval, Ytr, Yval = train_test_split(Xtr, Ytr, train_size=0.7, shuffle=True)
 
@@ -33,7 +37,7 @@ sigma = 1
 kernel = RBF(sigma=sigma).kernel
 classifier = MulticlassSVC(10,kernel,C)
 print('Training classifier (sigma, C) = ', sigma,C)
-classifier.fit(Xtr, Ytr, verbose = True, use_weights=False)
+classifier.fit(Xtr, Ytr, verbose = True, use_weights=True)
 
 predictions, scores = classifier.predict(Xval)
 

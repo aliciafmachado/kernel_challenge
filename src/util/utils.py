@@ -4,7 +4,7 @@ import numpy as np
 from tqdm import tqdm
 from sklearn.decomposition import PCA
 import pandas as pd
-
+from PIL import Image
 
 def accuracy(y, pred):
     return np.sum(y == pred)/len(y)
@@ -47,3 +47,14 @@ def save_results(Yte, results_name="Yte_pred.csv", results_path="data"):
     dataframe.to_csv('Yte_pred.csv',index_label='Id')
 
     print("Results ready for submission!")
+
+
+def rgb_to_grayscale(Xtr):
+    """
+    averages over the three channels to reduce dimension and have a grayscale image
+    :param Xtr:
+    :return: Xtr_gray
+    """
+
+    Xtr_gray = np.mean(Xtr.reshape(len(Xtr),3,-1),1)
+    return Xtr_gray
