@@ -7,7 +7,7 @@ from scipy import optimize
 
 class KernelSVC :
 
-    def __init__(self, C, kernel, epsilon=1e-3) :
+    def __init__(self, C, kernel, epsilon=1e-3, tol = 1e-2) :
         self.type = 'non-linear'
         self.C = C
         self.kernel = kernel
@@ -16,6 +16,7 @@ class KernelSVC :
         self.epsilon = epsilon
         self.norm_f = None
         self.beyond_margin = None
+        self.tol = tol
 
     def fit(self, X, y, verbose = False, class_weights = None) :
         #### You might define here any variable needed for the rest of the code
@@ -28,7 +29,7 @@ class KernelSVC :
         s = np.kron(np.array([self.C, 0]), np.ones(N))
         if class_weights is not None :
             s[:N] *= (y == 1)*class_weights[0] + (y == -1)*class_weights[1]
-        print("s[:N] = ", s[:N])
+        print("s[:N] contains ", np.unique(s[:N]))
 
         # Lagrange dual problem
         def loss(alpha) :
@@ -61,6 +62,7 @@ class KernelSVC :
                                    method='SLSQP',
                                    jac=lambda alpha : grad_loss(alpha),
                                    constraints=constraints,
+                                   tol=self.tol,
                                    options={'disp' : verbose, 'iprint' : 2})
         print('End optimisation ', optRes)
 
@@ -94,13 +96,13 @@ class KernelSVC :
 
 class MulticlassSVC :
 
-    def __init__(self, nb_classes, kernel, C, epsilon = 1e-3):
+    def __init__(self, nb_classes, kernel, C, epsilon = 1e-3, tol = 1e-2):
 
         self.nb_classes = nb_classes
         self.classifiers = []
         self.C = C if type(C) == list else [C]*nb_classes
         for i in range(nb_classes):
-            self.classifiers.append(KernelSVC(self.C[i],kernel,epsilon))
+            self.classifiers.append(KernelSVC(self.C[i],kernel,epsilon, tol=tol))
 
 
     def fit(self,Xtrain,Y_train, verbose= False, use_weights = True):
