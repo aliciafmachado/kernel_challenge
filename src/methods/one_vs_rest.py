@@ -3,6 +3,8 @@
 import numpy as np
 import scipy as sp
 from scipy import optimize
+import cvxopt
+import src.util.utils as ut
 
 
 class KernelSVC :
@@ -17,6 +19,53 @@ class KernelSVC :
         self.norm_f = None
         self.beyond_margin = None
         self.tol = tol
+
+    def fit_cvxopt(self, X, y, verbose = False, class_weights = None) :
+        #### You might define here any variable needed for the rest of the code
+        N = len(y)
+        d = np.diag(y)
+        K = self.kernel(X, X)
+        print('Kernel computed')
+        # Constraints variables for the inequality constraint
+        G = - np.kron(np.array([[-1], [1]]), np.eye(N))
+        h = np.kron(np.array([self.C, 0]), np.ones(N))
+        if class_weights is not None :
+            h[:N] *= (y == 1)*class_weights[0] + (y == -1)*class_weights[1]
+        print("s[:N] contains ", np.unique(h[:N]))
+
+
+
+        P = d @ K @ d
+        q = -np.ones(len(K))
+
+
+        # Constraints on alpha of the shape :
+        # -  d - C*alpha  = 0
+        # -  s - A*alpha >= 0
+
+
+        A = y.reshape(1,-1).astype('float')
+
+        b = np.array([[0]]).astype('float')
+
+        res = ut.cvxopt_solve_qp(P,q,G,h,A,b)
+        print('End optimisation ', res)
+
+        self.alpha = d @ res
+        ## Assign the required attributes
+        supportIndices = np.argwhere(
+            (np.abs(self.alpha) > self.epsilon) * (np.abs(self.alpha) < self.C - self.epsilon)).flatten()
+        marginIndices = np.argwhere((np.abs(self.alpha) > self.epsilon)).flatten()
+
+        self.support = X[
+            supportIndices]  # '''------------------- A matrix with each row corresponding to a support vector ------------------'''
+        self.b = np.mean(y[supportIndices] - (K @ self.alpha)[
+            supportIndices])  # ''' -----------------offset of the classifier------------------ '''
+        self.norm_f = self.alpha.T @ K @ self.alpha  # '''------------------------RKHS norm of the function f ------------------------------'''
+
+        # Only keep the indices where alpha is not zero
+        self.beyond_margin = X[marginIndices]
+        self.alpha = self.alpha[marginIndices]
 
     def fit(self, X, y, verbose = False, class_weights = None) :
         #### You might define here any variable needed for the rest of the code
@@ -33,11 +82,13 @@ class KernelSVC :
 
         # Lagrange dual problem
         def loss(alpha) :
-            return 1 / 2 * alpha.T @ d @ K @ d @ alpha - np.sum(alpha)
+            loss_ = 1 / 2 * alpha.T @ d @ K @ d @ alpha - np.sum(alpha)
+            return loss_
 
         # Partial derivate of Ld on alpha
         def grad_loss(alpha) :
-            return d @ K @ d @ alpha - np.ones_like(alpha)
+            grad = d @ K @ d @ alpha - np.ones_like(alpha)
+            return grad
 
         # Constraints on alpha of the shape :
         # -  d - C*alpha  = 0
@@ -82,6 +133,8 @@ class KernelSVC :
         self.beyond_margin = X[marginIndices]
         self.alpha = self.alpha[marginIndices]
 
+
+
     ### Implementation of the separting function $f$
     def separating_function(self, x) :
         # Input : matrix x of shape N data points times d dimension
@@ -105,7 +158,7 @@ class MulticlassSVC :
             self.classifiers.append(KernelSVC(self.C[i],kernel,epsilon, tol=tol))
 
 
-    def fit(self,Xtrain,Y_train, verbose= False, use_weights = True):
+    def fit(self,Xtrain,Y_train, verbose= False, use_weights = True, solver = 'scipy'):
 
         '''Fit all the classifiers individually'''
 
@@ -118,7 +171,10 @@ class MulticlassSVC :
                 class_weights = [len(Ybinary) / np.sum(Ybinary == 1), len(Ybinary) / np.sum(Ybinary == -1)]
             else :
                 class_weights = None
-            svc.fit(Xtrain, Ybinary, verbose=verbose, class_weights=class_weights)
+            if solver == 'scipy':
+                svc.fit(Xtrain, Ybinary, verbose=verbose, class_weights=class_weights)
+            else:
+                svc.fit_cvxopt(Xtrain, Ybinary, verbose=verbose, class_weights=class_weights)
         return
 
     def predict(self, Xtrain):

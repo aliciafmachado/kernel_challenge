@@ -2,14 +2,11 @@
 
 from matplotlib import pyplot as plt
 from util.utils import read_data
-from util.kernels import RBF, Linear
+from util.kernels import RBF
 from methods.kernel_pca import Kernel_PCA
-from sklearn.decomposition import KernelPCA
-from sklearn.metrics.pairwise import rbf_kernel
 import numpy as np
 import os
 import util.utils as ut
-from brouillons_agathe.sift_bovw_svm import transform_bovw_vectors
 
 
 def main():

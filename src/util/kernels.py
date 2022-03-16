@@ -19,4 +19,8 @@ class Linear :
 
     def kernel(self, X, Y) :
         ## Input vectors X and Y of shape Nxd and Mxd
-        return X @ Y.T
+        return X @ Y
+
+
+
+

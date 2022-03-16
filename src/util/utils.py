@@ -6,7 +6,7 @@ from sklearn.decomposition import PCA
 import pandas as pd
 import os
 from scipy.fft import fft2, fftshift
-
+import cvxopt
 
 
 def accuracy(y, pred):
@@ -98,3 +98,15 @@ def transform_to_fourier(Xtr):
     for img in Xtr:
         fouriers.append(image_to_fourier(img))
     return np.array(fouriers)
+
+def cvxopt_solve_qp(P, q, G=None, h=None, A=None, b=None):
+    P = .5 * (P + P.T)  # make sure P is symmetric
+    args = [cvxopt.matrix(P), cvxopt.matrix(q)]
+    if G is not None:
+        args.extend([cvxopt.matrix(G), cvxopt.matrix(h)])
+        if A is not None:
+            args.extend([cvxopt.matrix(A), cvxopt.matrix(b)])
+    sol = cvxopt.solvers.qp(*args)
+    if 'optimal' not in sol['status']:
+        return None
+    return np.array(sol['x']).reshape((P.shape[1],))
