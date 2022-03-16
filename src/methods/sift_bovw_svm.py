@@ -22,6 +22,12 @@ def compute_sift(Xtr_im):
 
 
 def compute_all_descriptors(Xtr):
+    """
+
+    :param Xtr: array of gray images (N*1024)
+    :return: the descriptors for each instance and the memory of how many descriptor
+    there is for each image (useful to keep track of wich descriptor belongs to who)
+    """
 
     descriptors = []
     memory = []
@@ -39,12 +45,27 @@ def compute_all_descriptors(Xtr):
 from sklearn.cluster import KMeans
 
 def compute_clusters(features,nb_centroids):
+    """
+
+    :param features: array of features
+    :param nb_centroids: nb of clusters to do
+    :return: the kmeans instance and cluster-labels for each instance
+    """
+
     kmeans = KMeans(nb_centroids).fit(features)
     labels = np.argmin(kmeans.transform(features), axis=1)
     return kmeans, labels
 
 
 def compute_bovw(labels, memory, nb_centroids):
+    """
+
+    :param labels: each cluster label for each descriptor instances
+    :param memory: the array of how many descriptors belong to the i-th image
+    :param nb_centroids: the number of cluster that was used
+    :return: the bovw representation for each original image instance
+    """
+
     feature_vectors = []
     cpt = 0
     for l in memory:
@@ -62,6 +83,11 @@ def compute_bovw(labels, memory, nb_centroids):
 # Then normalize_features vector and try SVM classification on it
 
 def transform_bovw_vectors(Xtr):
+    """
+
+    :param Xtr: the set of images
+    :return: the bovw features
+    """
     all_descriptors, memory = compute_all_descriptors(Xtr)
     kmeans, labels = compute_clusters(all_descriptors, 30)
     features_vectors = compute_bovw(labels, memory, 30)
