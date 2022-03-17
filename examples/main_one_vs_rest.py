@@ -16,7 +16,7 @@ Xtr, Ytr = Xtr[idx], Ytr[idx]
 
 
 write_test_results = False
-experiment_name = 'hist_sigma_10_C_1000_unnorm'
+experiment_name = 'energy_hist_sigma_10_C_1_norm'
 
 if not write_test_results:
 
@@ -38,8 +38,8 @@ if not write_test_results:
 
 
 ### Transform into histogram representation
-Xtr = ut.images_to_hist(Xtr, 30, -0.1,0.1)
-Xte = ut.images_to_hist(Xte, 30, -0.1, 0.1)
+# Xtr = ut.images_to_hist(Xtr, 30, -0.1,0.1)
+# Xte = ut.images_to_hist(Xte, 30, -0.1, 0.1)
 
 
 
@@ -49,8 +49,16 @@ Xte = ut.images_to_hist(Xte, 30, -0.1, 0.1)
 # Xtr = pca.fit_and_transform(Xtr)
 # Xte = pca.transform(Xte)
 
+### Transform into orientation histograms
+from src.methods.oriented_edge_detection import Xtr_to_energy_hist, create_filters
+filters = create_filters(8,1,0.5,1,5,1)
+Xtr = Xtr_to_energy_hist(Xtr,filters,15,0.5)
+Xte = Xtr_to_energy_hist(Xte,filters, 15,0.5)
+
 ### Normalize
 Xtr, Xte = ut.normalize(Xtr,Xte)
+
+
 
 
 #---------------------------------------------------------------------------------------
@@ -59,8 +67,8 @@ Xtr, Xte = ut.normalize(Xtr,Xte)
 
 
 # Train a binary classifier to start with
-C = 1000/len(Ytr)
-sigma = 1
+C = 1
+sigma = 10
 kernel = RBF(sigma=sigma).kernel
 classifier = MulticlassSVC(10,kernel,C, tol = 1e-2)
 print('Training classifier (sigma, C) = ', sigma,C)
