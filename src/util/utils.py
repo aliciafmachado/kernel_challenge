@@ -7,6 +7,9 @@ import pandas as pd
 import os
 from scipy.fft import fft2, fftshift
 import cvxopt
+from matplotlib import pyplot as plt
+from scipy import signal
+import itertools
 
 
 def accuracy(y, pred):
@@ -110,3 +113,27 @@ def cvxopt_solve_qp(P, q, G=None, h=None, A=None, b=None):
     if 'optimal' not in sol['status']:
         return None
     return np.array(sol['x']).reshape((P.shape[1],))
+
+def convolve2d_rgb(image, kernel, **args):
+    """
+    TODO: don't know if it will be useful but had implemented for a previous idea
+    Convolve a 3d image with a 2d kernel.
+    :param image: expects image in shape (32,32,3)
+    :param args: args for convolve_2d fn from scipy.signal
+    :return:
+    """
+    new_img = np.zeros(image.shape)
+    for i in range(image.shape[-1]):
+        new_img[:,:,i] = signal.convolve2d(image[:,:,i], kernel, **args)
+
+    return new_img
+
+def get_permutations(parameters):
+  """
+  Get all possible combinations of parameters.
+
+  Useful for grid search.
+  """
+  keys, values = zip(*parameters.items())
+  permutations_dicts = [dict(zip(keys, v)) for v in itertools.product(*values)]
+  return permutations_dicts
