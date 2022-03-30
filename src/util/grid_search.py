@@ -8,10 +8,15 @@ import numpy as np
 
 
 class GridSearch:
-    def __init__(self, hyperparameters, methods):
+    def __init__(self, hyperparameters, model, kernel, tune="kernel", 
+                model_params=None, kernel_params=None):
         # TODO: maybe search for best preprocessing as well
         # self.preprocessing_pipelines = []
-        self.methods = methods
+        self.model = model
+        self.kernel = kernel
+        self.model_params = model_params
+        self.kernel_params = kernel_params
+        self.tune = tune
         self.hyperparameters = hyperparameters
         self.best_hyperparameters = None
         self.best_predictor = None
@@ -22,17 +27,29 @@ class GridSearch:
         self.all_scores = []
 
     def fit(self, X_train, y_train, X_test, y_test, verbose=True):
-        for method in self.methods:
-            for parameter in get_permutations(self.hyperparameters):
-                m = method(**parameter)
-                m.fit(X_train, y_train)
-                self.all_predictors.append(m)
-                self.all_scores.append(accuracy(m.predict(X_test), y_test))
-                # Appending method and parameter which might not be ideal
-                self.all_parameters.append((method, parameter))
-                if verbose:
-                    print(f'Using {method} with {parameter}')
-                    print(self.all_scores[-1])
+
+        for parameter in get_permutations(self.hyperparameters):
+            if self.tune == "kernel":
+                kernel_params = parameter
+                model_params = self.model_params
+            elif self.tune == "model":
+                model_params = parameter
+                kernel_params = self.kernel_params
+
+            kernel = self.kernel(**kernel_params).kernel
+            m = self.model(10, kernel, **model_params)
+
+            # TODO: make it possible to change solver
+            m.fit(X_train, y_train, verbose=True, use_weights=True, solver='cvxopt')
+
+            self.all_predictors.append(m)
+            self.all_scores.append(accuracy(m.predict(X_test), y_test))
+            # Appending method and parameter which might not be ideal
+            self.all_parameters.append(parameter)
+
+            if verbose:
+                print(f'Using {self.model} with {parameter}')
+                print(self.all_scores[-1])
 
         best_score_idx = np.argmax(self.all_scores)
 

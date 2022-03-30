@@ -2,12 +2,13 @@
 
 import numpy as np
 from src.methods.one_vs_rest import MulticlassSVC
-from src.util.kernels import RBF
+from src.util.kernels import RBF, Polynomial
 from sklearn.model_selection import train_test_split
 import src.util.utils as ut
 
 # Import the data
 data_path = '../data/'
+np.random.seed(42)
 
 Xtr,Ytr,Xte = ut.read_data(data_path)
 nb_points = 5000  # Work on a subpart of the data to limit computation time. MAX = 5000

@@ -149,7 +149,7 @@ class KernelSVC :
 
 class MulticlassSVC :
 
-    def __init__(self, nb_classes, kernel, C, epsilon = 1e-3, tol = 1e-2):
+    def __init__(self, nb_classes, kernel, C=1, epsilon = 1e-3, tol = 1e-2):
 
         self.nb_classes = nb_classes
         self.classifiers = []
