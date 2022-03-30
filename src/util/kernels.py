@@ -31,21 +31,18 @@ class Polynomial :
         ## Input vectors X and Y of shape Nxd and Mxd
         return (X @ Y.T + self.coef0) ** self.degree
 
-# class MultivariateKernel :
-#     def __init__(self, kernel, args):
-#         self.kernel = kernel(**args).kernel
+
+class Intersection :
+    """
+    Intersection kernel.
+    """
+    def __init__(self):
+        return
     
-#     def kernel(self, X, Y) :
-#         ## Input vectors X and Y of shape Nxdxd and Mxdxd
-#         d = X.shape[-1]
-#         # Take all x concatenated (certain ordering)
-#         x_x =
-#         y_x =
+    def kernel(self, X, Y):
+        kernel = np.zeros((X.shape[0], Y.shape[0]))
 
-#         # Take all y concatenated (other ordering)
-#         x_y = ... 
-
-#         # TODO: Sum or product of the kernels?
-#         # For gaussian i think it's product so i will keep that way
-#         # Pointwise multiplication:
-#         return self.kernel(x_x, y_x) * self.kernel(x_y, y_x)
+        for i in range(X.shape[1]):
+            kernel += np.minimum(X[:,i].reshape(-1, 1), Y[:,i].reshape(-1, 1).T)
+            
+        return kernel
