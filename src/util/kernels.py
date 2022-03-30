@@ -1,5 +1,6 @@
 '''Classes of kernels'''
 
+from random import betavariate
 import numpy as np
 
 
@@ -44,5 +45,26 @@ class Intersection :
 
         for i in range(X.shape[1]):
             kernel += np.minimum(X[:,i].reshape(-1, 1), Y[:,i].reshape(-1, 1).T)
-            
+
+        return kernel
+
+
+class GeneralizedHistogramIntersection :
+    """
+    Generalized Histogram Intersection in
+    http://perso.lcpc.fr/tarel.jean-philippe/publis/jpt-icip05.pdf
+    """
+
+    def __init__(self, beta=0.25):
+        # beta should be greater than 0
+        self.beta = beta
+
+    def kernel(self, X, Y):
+        X_abs = np.abs(X) ** self.beta
+        Y_abs = np.abs(Y) ** self.beta
+        kernel = np.zeros((X.shape[0], Y.shape[0]))
+
+        for i in range(X.shape[1]):
+            kernel += np.minimum(X_abs[:,i].reshape(-1, 1), Y_abs[:,i].reshape(-1, 1).T)
+
         return kernel
