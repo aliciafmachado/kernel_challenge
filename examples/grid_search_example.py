@@ -6,7 +6,7 @@ import numpy as np
 from src.methods.one_vs_rest import MulticlassSVC
 from sklearn.model_selection import train_test_split
 from src.util.kernels import RBF, Polynomial
-from src.methods.oriented_edge_detection import Xtr_to_energy_hist, create_filters
+from src.methods.oriented_edge_features import Xtr_to_energy_hist, create_filters
 import src.util.utils as ut
 
 

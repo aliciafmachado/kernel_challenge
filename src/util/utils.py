@@ -137,3 +137,14 @@ def get_permutations(parameters):
   keys, values = zip(*parameters.items())
   permutations_dicts = [dict(zip(keys, v)) for v in itertools.product(*values)]
   return permutations_dicts
+
+
+def compute_confusion_matrix(targets, preds,n_labels):
+    matrix = np.zeros((n_labels,n_labels))
+    for i in range(n_labels):
+        for j in range(n_labels):
+            if np.sum(targets == i) == 0:
+                matrix[i,j] = 0
+            idx = np.nonzero(targets == i)
+            matrix[i,j] = np.sum(preds[idx] == j)
+    return matrix

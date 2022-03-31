@@ -5,6 +5,8 @@ from src.methods.one_vs_rest import MulticlassSVC
 from src.util.kernels import RBF, Polynomial
 from sklearn.model_selection import train_test_split
 import src.util.utils as ut
+from src.methods.oriented_edge_features import *
+
 
 # Import the data
 data_path = '../data/'
@@ -50,11 +52,20 @@ if not write_test_results:
 # Xtr = pca.fit_and_transform(Xtr)
 # Xte = pca.transform(Xte)
 
-### Transform into orientation histograms
-from src.methods.oriented_edge_detection import Xtr_to_energy_hist, create_filters
+# ### Transform into orientation histograms
+# filters = create_filters(8,1,0.5,1,5,1)
+# en_hist = energy_hist(filters,nbins=15,bound=0.5)
+# Xtr = en_hist.transform_all(Xtr)
+# Xte = en_hist.transform_all(Xte)
+
+## Transform into multilevel energy features
 filters = create_filters(8,1,0.5,1,5,1)
-Xtr = Xtr_to_energy_hist(Xtr,filters,15,0.5)
-Xte = Xtr_to_energy_hist(Xte,filters, 15,0.5)
+mlef = multi_level_energy_features(8,filters)
+Xtr = mlef.transform_all(Xtr)
+Xte = mlef.transform_all(Xte)
+
+### Sanity check for the shape
+print(f'Shape of features {np.shape(Xtr)}')
 
 ### Normalize
 Xtr, Xte = ut.normalize(Xtr,Xte)
@@ -88,7 +99,9 @@ print("Training accuracy ;", ut.accuracy(Ytr, predictions))
 if not write_test_results :
     predictions, scores = classifier.predict(Xte)
     print((scores > 0).any())
-    print(ut.accuracy(Yte, predictions))
+    print("Validation accuracy ;",ut.accuracy(Yte, predictions))
+    print('Confusion matrix')
+    print(ut.compute_confusion_matrix(Yte,predictions,10))
 
 else :
     # Write the predictions on Xte

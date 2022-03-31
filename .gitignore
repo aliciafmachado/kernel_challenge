@@ -130,5 +130,5 @@ dmypy.json
 
 # data
 data/
-.idea/ # pycharm related folder
+.idea/
 brouillons_agathe/
