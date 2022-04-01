@@ -19,12 +19,17 @@ class KernelSVC :
         self.norm_f = None
         self.beyond_margin = None
         self.tol = tol
+        self.mean_score = 0
+        self.std_score = 1
 
-    def fit_cvxopt(self, X, y, verbose = False, class_weights = None) :
-        #### You might define here any variable needed for the rest of the code
+    def fit_cvxopt(self, X, y, verbose = False, class_weights = None, precomputed_K = None) :
+
         N = len(y)
         d = np.diag(y)
-        K = self.kernel(X, X)
+        if precomputed_K is None:
+            K = self.kernel(X, X)
+        else :
+            K = precomputed_K
         print('Kernel computed')
         # Constraints variables for the inequality constraint
         G = - np.kron(np.array([[-1], [1]]), np.eye(N))
@@ -63,15 +68,25 @@ class KernelSVC :
             supportIndices])  # ''' -----------------offset of the classifier------------------ '''
         self.norm_f = self.alpha.T @ K @ self.alpha  # '''------------------------RKHS norm of the function f ------------------------------'''
 
+        # Compute the mean and variance of the function value for all training samples
+        f = K@self.alpha + self.b
+        self.mean_score = np.mean(f)
+        self.std_score = np.std(f)
+
         # Only keep the indices where alpha is not zero
         self.beyond_margin = X[marginIndices]
         self.alpha = self.alpha[marginIndices]
 
-    def fit(self, X, y, verbose = False, class_weights = None) :
+
+
+    def fit(self, X, y, verbose = False, class_weights = None, precomputed_K = None) :
         #### You might define here any variable needed for the rest of the code
         N = len(y)
         d = np.diag(y)
-        K = self.kernel(X, X)
+        if precomputed_K is None:
+            K = self.kernel(X, X)
+        else :
+            K = precomputed_K
         print('Kernel computed')
         # Constraints variables for the inequality constraint
         A = np.kron(np.array([[-1], [1]]), np.eye(N))
@@ -153,14 +168,20 @@ class MulticlassSVC :
 
         self.nb_classes = nb_classes
         self.classifiers = []
+        self.kernel = kernel
         self.C = C if type(C) == list else [C]*nb_classes
         for i in range(nb_classes):
             self.classifiers.append(KernelSVC(self.C[i],kernel,epsilon, tol=tol))
 
 
+
     def fit(self,Xtrain,Y_train, verbose= False, use_weights = True, solver = 'scipy'):
 
         '''Fit all the classifiers individually'''
+
+        # Precomputed the kernel matrix
+        K = self.kernel(Xtrain, Xtrain)
+        print(np.linalg.matrix_rank(K))
 
         for i in range(self.nb_classes):
             if verbose :
@@ -172,9 +193,9 @@ class MulticlassSVC :
             else :
                 class_weights = None
             if solver == 'scipy':
-                svc.fit(Xtrain, Ybinary, verbose=verbose, class_weights=class_weights)
+                svc.fit(Xtrain, Ybinary, verbose=verbose, class_weights=class_weights, precomputed_K=K)
             else:
-                svc.fit_cvxopt(Xtrain, Ybinary, verbose=verbose, class_weights=class_weights)
+                svc.fit_cvxopt(Xtrain, Ybinary, verbose=verbose, class_weights=class_weights, precomputed_K=K)
         return
 
     def predict(self, Xtrain):
@@ -184,6 +205,9 @@ class MulticlassSVC :
         scores = np.zeros((len(Xtrain), self.nb_classes))
         for i in range(self.nb_classes) :
             scores[:,i] = self.classifiers[i].separating_function(Xtrain)
+
+            # Normalize so that the distribution of the scores is similar for each classifier
+            scores[:,i] = (scores[:,i] - self.classifiers[i].mean_score)/(self.classifiers[i].std_score)
 
         classes = np.argmax(scores, axis = 1)
         return classes, scores

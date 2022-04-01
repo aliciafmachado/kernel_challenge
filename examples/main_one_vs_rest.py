@@ -1,10 +1,11 @@
 """Script to run a multi-class classifier testing different pre_processing techniques"""
-
+import matplotlib.pyplot as plt
 import numpy as np
 from src.methods.one_vs_rest import MulticlassSVC
-from src.util.kernels import RBF, Polynomial
+from src.util.kernels import RBF, Polynomial, Intersection, Linear
 from sklearn.model_selection import train_test_split
 import src.util.utils as ut
+from src.methods.kernel_pca import *
 from src.methods.oriented_edge_features import *
 
 
@@ -14,7 +15,7 @@ np.random.seed(42)
 
 Xtr,Ytr,Xte = ut.read_data(data_path)
 nb_points = 5000  # Work on a subpart of the data to limit computation time. MAX = 5000
-idx = np.random.choice(np.arange(len(Xtr)), size=nb_points)
+idx = np.random.choice(np.arange(len(Xtr)), size=nb_points, replace=False)
 Xtr, Ytr = Xtr[idx], Ytr[idx]
 
 
@@ -45,25 +46,27 @@ if not write_test_results:
 # Xte = ut.images_to_hist(Xte, 30, -0.1, 0.1)
 
 
-
-### Apply PCA
-# kernel_fn = RBF(sigma=10).kernel
-# pca = Kernel_PCA(n_components=50, kernel_fn=kernel_fn)
-# Xtr = pca.fit_and_transform(Xtr)
-# Xte = pca.transform(Xte)
-
 # ### Transform into orientation histograms
 # filters = create_filters(8,1,0.5,1,5,1)
-# en_hist = energy_hist(filters,nbins=15,bound=0.5)
+# en_hist = energy_hist(filters,nbins=20,bound=0.5)
 # Xtr = en_hist.transform_all(Xtr)
 # Xte = en_hist.transform_all(Xte)
 
 ## Transform into multilevel energy features
 filters = create_filters(8,1,0.5,1,5,1)
-mlef = multi_level_energy_features(8,filters)
+mlef = multi_level_energy_features(8 ,filters, 5, 0.5)
 Xtr = mlef.transform_all(Xtr)
 Xte = mlef.transform_all(Xte)
 
+### Apply PCA
+# kernel_fn = Intersection().kernel
+# pca = Kernel_PCA(n_components=50, kernel_fn=kernel_fn)
+# Xtr = pca.fit_and_transform(Xtr)
+# Xte = pca.transform(Xte)
+#
+# plt.scatter(Xtr[:,0], Xtr[:,1], c=Ytr)
+# plt.savefig('kpca.png')
+# 1/0
 ### Sanity check for the shape
 print(f'Shape of features {np.shape(Xtr)}')
 
@@ -79,11 +82,19 @@ Xtr, Xte = ut.normalize(Xtr,Xte)
 
 
 # Train a binary classifier to start with
-C = 1
+
+# Choose a kernel
+
 sigma = 10
 kernel = RBF(sigma=sigma).kernel
+
+# kernel = Intersection().kernel # Don"t normalize if you use this!
+
+# kernel = Linear().kernel
+
+C = 1
 classifier = MulticlassSVC(10,kernel,C, tol = 1e-2)
-print('Training classifier (sigma, C) = ', sigma,C)
+print('Training classifier C = ', C)
 classifier.fit(Xtr, Ytr, verbose = True, use_weights=True, solver='cvxopt')
 
 #------------------------------------------------------------------------------

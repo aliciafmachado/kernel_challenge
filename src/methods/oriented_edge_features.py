@@ -56,7 +56,7 @@ class energy_hist():
         transformed_images = apply_filters(img, self.filters) # list of energy filtered images
         histograms = []
         for z in transformed_images:
-            h = np.histogram(z.flatten(), self.nbins, range=[-self.bound, self.bound])[0]
+            h = np.histogram(z.flatten(), self.nbins, range=[-self.bound, self.bound], density=True)[0]
             histograms.append(h)
         return np.concatenate(histograms)
 
@@ -113,12 +113,17 @@ def tile(img, sz):
 
 class multi_level_energy_features():
 
-    def __init__(self, size_min,filters):
+    def __init__(self, size_min,filters, nbins, bound, gray = False, sum = True):
 
         self.size_min = size_min
+        self.gray = gray # Compute the energy response on the gray level image or on each color individually
         self.nb_levels = int(np.log2(32/size_min)) + 1
         self.filters = filters
         self.tile_sizes = [32//2**i for i in range(self.nb_levels)]
+        self.weights = [1/(2**self.nb_levels)] + [1/(2**self.nb_levels - i + 1) for i in range(1,self.nb_levels)]
+        self.sum = sum
+        self.nbins = nbins
+        self.bound = bound
 
     def transform(self,image):
         ''' Return the multi-level energy histogram representation of the array (32,32) image'''
@@ -134,18 +139,28 @@ class multi_level_energy_features():
         for i,sz in enumerate(self.tile_sizes):
             tiles = tile(energy_img,sz)
             # histograms = 1/(4**(self.nb_levels - i))* np.sum(tiles, axis=(1,2))
-            histograms = np.mean(tiles, axis=(1,2 ))
-            level_hist.append(histograms)
+            if self.sum :
+                histograms = self.weights[i]*np.sum(np.abs(tiles), axis=(1,2 ))
+                level_hist.append(histograms)
+            else :
+                for t in tiles:
+                    level_hist.append(np.histogram(np.abs(t), self.nbins, range=[-self.bound, self.bound], density=True)[0])
 
         return np.concatenate(level_hist)
 
     def transform_rgb(self,im):
         """Compute the level_histograms representation for each channel and concatenate"""
         imR, imG, imB = im[:1024].reshape(32, 32), im[1024:2048].reshape(32, 32), im[2048:].reshape(32, 32)
-        featuresR = self.transform(imR)
-        featuresG = self.transform(imG)
-        featuresB = self.transform(imB)
-        return np.concatenate([featuresR,featuresG,featuresB])
+
+        if self.gray:
+            features = self.transform(imR + imG + imB)
+            return features
+
+        else:
+            featuresR = self.transform(imR)
+            featuresG = self.transform(imG)
+            featuresB = self.transform(imB)
+            return np.concatenate([featuresR,featuresG,featuresB])
 
     def transform_all(self, Xtr):
         """ Transform all the images in Xtr"""
@@ -153,6 +168,63 @@ class multi_level_energy_features():
         for im in Xtr:
             all_features.append(self.transform_rgb(im))
         return np.array(all_features)
+
+
+##########################################################################
+##### BAG OF HISTOGRAMS FEATURES
+
+class bag_of_hist():
+
+    def __init__(self, patch_size, stride, bins, bound, filters):
+        self.patch_size = patch_size
+        self.stride = stride
+        self.bins = bins
+        self.bound = bound
+        self.filters = filters
+
+    def return_all_tiles(self, img):
+        tiles = []
+        i = 0
+        while i + self.patch_size <= img.shape[0]:
+            j = 0
+            while j + self.patch_size <= img.shape[1]:
+                tiles.append(img[i:i+self.patch_size,j:j+self.patch_size].copy())
+                j += self.stride
+            i+=self.stride
+
+        return tiles
+
+    def transform(self,img):
+        """returns a bag of patch features for the image"""
+
+        transformed_images = apply_filters(img,self.filters)
+
+        #Extract all tiles
+        transformed_tiles = []
+        for en_img in transformed_images:
+            transformed_tiles.append(self.return_all_tiles(en_img))
+
+        #For each tile associate the feature vector
+        bag_features = []
+        for i in range(len(transformed_tiles[0])):
+            features = []
+            for j in range(len(transformed_tiles)):
+                features.append(np.histogram(transformed_tiles[j][i], self.bins, [-self.bound, self.bound], density = True)[0])
+            features = np.concatenate(features)
+            bag_features.append(features)
+
+        return np.array(bag_features)
+
+    def transform_rgb(self,im):
+        imR, imG, imB = im[:1024].reshape(32, 32), im[1024:2048].reshape(32, 32), im[2048:].reshape(32, 32)
+
+        featuresR = self.transform(imR)
+        featuresG = self.transform(imG)
+        featuresB = self.transform(imB)
+
+        features = np.concatenate((featuresR, featuresG,featuresB), axis=1)
+        print(features.shape)
+        return features
 
 
 ###########################################################################
@@ -187,14 +259,24 @@ def main():
     plt.savefig('energy.png')
 
     # Create a transformation instance MLEF
-    mlef = multi_level_energy_features(4,filters)
+    mlef = multi_level_energy_features(8,filters, 15, 0.5)
     features = mlef.transform_rgb(im)
+    print(features.shape)
     plt.figure(); plt.plot(features); plt.savefig('mlef.png')
 
     # Create an energy histogram instance
-    en_hist = energy_hist(filters,nbins=30,bound=0.5)
-    features2 = en_hist.transform_rgb(im)
-    plt.figure(); plt.plot(features2); plt.savefig('en_hist.png')
+    # en_hist = energy_hist(filters,nbins=30,bound=0.5)
+    # features2 = en_hist.transform_rgb(im)
+    # plt.figure(); plt.plot(features2); plt.savefig('en_hist.png')
+
+    # Extract bag of features
+    # bag_transform = bag_of_hist(16,16,5,0.5,filters)
+    # bag_of_features = bag_transform.transform_rgb(im)
+    # # Visualize
+    # fig, ax = plt.subplots(len(bag_of_features),1)
+    # for i,patch in enumerate(bag_of_features):
+    #     ax[i].plot(bag_of_features[i])
+    # plt.savefig('../../results/bagof.png')
 
 
 
