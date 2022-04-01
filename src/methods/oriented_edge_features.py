@@ -4,7 +4,7 @@ from scipy.ndimage.filters import gaussian_filter
 import numpy as np
 import src.util.utils as ut
 import matplotlib.pyplot as plt
-from scipy import signal
+from scipy import signal, misc
 
 
 ###############################################################
@@ -85,7 +85,7 @@ def norm16(img):
     """Compute the sum of energy response in each 16x16 subsquare"""
     img_grid = img.reshape(img.shape[0]//16,16,img.shape[1]//16,16)
     img_grid = img_grid.transpose(0, 2, 1, 3)
-    norm_factors = np.sum(img_grid,axis=(2,3))
+    norm_factors = np.sum(np.abs(img_grid),axis=(2,3))
     return norm_factors
 
 def normalize16(energy_images):
@@ -111,6 +111,24 @@ def tile(img, sz):
     tiles = img_grid.transpose(0, 2, 1, 3).reshape(-1,sz,sz)
     return tiles
 
+def non_max_suppression(img,angle):
+
+    dict_conv = [(np.array([[0,0,0],[0,1,0],[0,-1,0]]),np.array([[0,-1,0],[0,1,0],[0,0,0]])),
+                 (np.array([[0, 0, 0], [0, 1, 0], [-1/2, -1/2, 0]]), np.array([[0, -1/2, -1/2], [0, 1, 0], [0, 0, 0]])),
+                 (np.array([[0, 0, 0], [0, 1, 0], [-1, 0, 0]]), np.array([[0, 0, -1], [0, 1, 0], [0, 0, 0]])),
+                 (np.array([[0, 0, 0], [-1/2, 1, 0], [-1/2, 0, 0]]), np.array([[0, 0, -1/2], [0, 1, -1/2], [0, 0, 0]])),
+                 (np.array([[0, 0, 0], [-1, 1, 0], [0, 0, 0]]), np.array([[0, 0, 0], [0, 1, -1], [0, 0, 0]])),
+                 (np.array([[-1/2, 0, 0], [-1/2, 1, 0], [0, 0, 0]]), np.array([[0, 0, 0], [0, 1, -1/2], [0, 0, -1/2]])),
+                 (np.array([[-1 , 0, 0], [0, 1, 0], [0, 0, 0]]),np.array([[0, 0, 0], [0, 1, 0], [0, 0, -1]])),
+                 (np.array([[-1/2, -1/2, 0], [0, 1, 0], [0, 0, 0]]), np.array([[0, 0, 0], [0, 1, 0], [0, -1/2, -1/2]])),
+                 ]
+    conv1, conv2 = dict_conv[angle]
+    img_bool = signal.convolve2d(img, conv1, boundary='symm', mode='same') > 0
+    img_bool *= signal.convolve2d(img, conv2, boundary='symm', mode='same') >0
+    return img*img_bool
+
+
+
 class multi_level_energy_features():
 
     def __init__(self, size_min,filters, nbins, bound, gray = False, sum = True):
@@ -130,6 +148,7 @@ class multi_level_energy_features():
 
         # First apply the energy filters
         energy_img = np.concatenate(apply_filters(image,self.filters)) # Big image of size (32*nb_filters ,32)
+        energy_img = energy_img**2
 
         # Then normalize in each 16*16 squares accross directions
         energy_img = normalize16(energy_img).reshape(-1,32)
@@ -237,15 +256,17 @@ def main():
     im = Xte[1]
     # im = Xtr[np.random.randint(0,len(Xtr))] # Select random image
     imR, imG, imB = im[:1024].reshape(32,32), im[1024:2048].reshape(32,32), im[2048:].reshape(32,32)
-    gray = np.mean([imR, imG, imB], axis=0)
+    # gray = np.mean([imR, imG, imB], axis=0)
 
+    gray = misc.ascent()
     # Visualize gray image
     plt.figure()
     plt.imshow(gray, cmap='gray')
     plt.savefig('gray_img.png')
 
     # Create and visualize filters
-    filters = create_filters(8,1,0.5,1,5,1)
+    filters = create_filters(8,1,3,1,3,1)
+    print(filters[0])
     fig, ax = plt.subplots(1, len(filters))
     for i,z in enumerate(filters):
         ax[i].imshow(z)
@@ -255,8 +276,16 @@ def main():
     transformed_images = apply_filters(gray,filters)
     fig, ax = plt.subplots(1, len(filters))
     for i,z in enumerate(transformed_images):
-        ax[i].imshow(z)
+        ax[i].imshow(z**2)
     plt.savefig('energy.png')
+
+    # Apply non max suppression and visualize
+    fig, ax = plt.subplots(1, len(filters))
+    for i,im in enumerate(transformed_images):
+        z = non_max_suppression(im**2,i)
+        ax[i].imshow(z)
+    plt.savefig('nms.png')
+    1/0
 
     # Create a transformation instance MLEF
     mlef = multi_level_energy_features(8,filters, 15, 0.5)
