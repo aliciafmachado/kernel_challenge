@@ -2,6 +2,7 @@
 
 from random import betavariate
 import numpy as np
+import warnings
 
 
 class RBF :
@@ -55,7 +56,7 @@ class GeneralizedHistogramIntersection :
     http://perso.lcpc.fr/tarel.jean-philippe/publis/jpt-icip05.pdf
     """
 
-    def __init__(self, beta=0.25):
+    def __init__(self, beta=1.0):
         # beta should be greater than 0
         self.beta = beta
 
@@ -68,3 +69,33 @@ class GeneralizedHistogramIntersection :
             kernel += np.minimum(X_abs[:,i].reshape(-1, 1), Y_abs[:,i].reshape(-1, 1).T)
 
         return kernel
+
+
+class Chi2 :
+    """
+    Chi2 kernel.
+
+    Attention: input should be strictly positive.
+    """
+
+    def __init__(self, gamma=1.0):
+        self.gamma = gamma
+
+    def kernel(self, X, Y):
+        kernel = np.zeros((X.shape[0], Y.shape[0]))
+
+        for i in range(X.shape[1]):
+            x, y = X[:, i].reshape(-1, 1), Y[:, i].reshape(-1, 1)
+            kernel += (x - y.T) ** 2 / (x + y.T)
+
+        return np.exp(-self.gamma * kernel)
+
+
+str_to_kernel = {
+    "rbf": RBF,
+    "linear": Linear,
+    "polynomial": Polynomial,
+    "intersection": Intersection,
+    "ghi": GeneralizedHistogramIntersection,
+    "chi2": Chi2,
+}

@@ -5,21 +5,23 @@ from src.util.grid_search import GridSearch
 import numpy as np
 from src.methods.one_vs_rest import MulticlassSVC
 from sklearn.model_selection import train_test_split
-from src.util.kernels import RBF, Polynomial
+from src.util.kernels import *
 from src.methods.oriented_edge_features import create_filters, multi_level_energy_features
 import src.util.utils as ut
+
+# Best parameters: sigma: 10 (1, 10, 20, 50, 100) between the ones searched
+#                  C: 1.0 (0.8, 0.9, 1.0, 1.1, 1.2) with fixed sigma and other params
 
 
 # Search for best parameters on gaussian kernel and then on polynomial kernel
 def svm_gridsearch(X_train, X_val, y_train, y_val, model, kernel, 
-                   parameters, tune="kernel", verbose=True):
+                   parameters, tune="kernel", verbose=True, model_params=None, kernel_params=None):
 
-    gs = GridSearch(parameters, model, kernel, tune=tune, model_params={'C': 1, 'epsilon': 1e-3, 'tol': 1e-2})
+    gs = GridSearch(parameters, model, kernel, tune=tune, model_params=model_params, kernel_params=kernel_params)
     gs.fit(X_train, y_train, X_val, y_val, verbose=verbose)
     return gs
 
 def __main__():
-    # TODO: There is a bug here even though i followed the same structure on main_one_vs_rest.py :/
     # Load data
     data_path = 'data/'
 
@@ -34,26 +36,28 @@ def __main__():
     X_train, X_val, y_train, y_val = train_test_split(Xtr, Ytr, test_size=val_split, shuffle=True)
 
     print("Transforming the data")
-    # filters = create_filters(8,1,0.5,1,5,1)
-    # X_train = Xtr_to_energy_hist(X_train,filters,15,0.5)
-    # X_val = Xtr_to_energy_hist(X_val,filters, 15,0.5)
     filters = create_filters(8,1,0.5,1,5,1)
     mlef = multi_level_energy_features(8 ,filters, 5, 0.5)
     X_train = mlef.transform_all(X_train)
     X_val = mlef.transform_all(X_val)
 
+    # Apply PCA on the data TODO
+    # Try with other kernels TODO
+
     ### Normalize
-    X_train, X_val = ut.normalize(X_train, X_val)
+    # Don't normalize when using min and chi2 kernels
+    # X_train, X_val = ut.normalize(X_train, X_val)
 
     # Search for best parameters using gaussian kernel
-    print("Searching for best parameters using gaussian kernel")
-    # sigmas = [1, 10, 20, 50, 100]
-    sigmas = [10, 20]
-    parameters= {'sigma': sigmas}
-    kernel = RBF
+    kernel = 'chi2'
+    print(f'Searching for best parameters using {kernel} kernel')
+    
+    gamma = [1.5]
+    parameters= {'gamma': gamma}
     model = MulticlassSVC
+    model_params={'C': 1, 'epsilon': 1e-3, 'tol': 1e-2}
     GS1 = svm_gridsearch(X_train, X_val, y_train, y_val, model, kernel, parameters, 
-                        tune="kernel", verbose=True)
+                        tune="kernel", verbose=True, model_params=model_params, kernel_params=None)
     print(f'Best score: {GS1.best_score} using {GS1.best_hyperparameters}')
 
     # # Search for best parameters using polynomial kernel

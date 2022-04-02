@@ -5,6 +5,7 @@ Grid search class.
 
 from src.util.utils import get_permutations, accuracy
 import numpy as np
+from src.util.kernels import str_to_kernel
 
 
 class GridSearch:
@@ -13,7 +14,7 @@ class GridSearch:
         # TODO: maybe search for best preprocessing as well
         # self.preprocessing_pipelines = []
         self.model = model
-        self.kernel = kernel
+        self.kernel = str_to_kernel[kernel]
         self.model_params = model_params
         self.kernel_params = kernel_params
         self.tune = tune
