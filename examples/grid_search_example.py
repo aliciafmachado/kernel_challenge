@@ -6,7 +6,7 @@ import numpy as np
 from src.methods.one_vs_rest import MulticlassSVC
 from sklearn.model_selection import train_test_split
 from src.util.kernels import RBF, Polynomial
-from src.methods.oriented_edge_features import Xtr_to_energy_hist, create_filters
+from src.methods.oriented_edge_features import create_filters, multi_level_energy_features
 import src.util.utils as ut
 
 
@@ -34,9 +34,13 @@ def __main__():
     X_train, X_val, y_train, y_val = train_test_split(Xtr, Ytr, test_size=val_split, shuffle=True)
 
     print("Transforming the data")
+    # filters = create_filters(8,1,0.5,1,5,1)
+    # X_train = Xtr_to_energy_hist(X_train,filters,15,0.5)
+    # X_val = Xtr_to_energy_hist(X_val,filters, 15,0.5)
     filters = create_filters(8,1,0.5,1,5,1)
-    X_train = Xtr_to_energy_hist(X_train,filters,15,0.5)
-    X_val = Xtr_to_energy_hist(X_val,filters, 15,0.5)
+    mlef = multi_level_energy_features(8 ,filters, 5, 0.5)
+    X_train = mlef.transform_all(X_train)
+    X_val = mlef.transform_all(X_val)
 
     ### Normalize
     X_train, X_val = ut.normalize(X_train, X_val)

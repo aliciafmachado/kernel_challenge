@@ -38,12 +38,11 @@ class GridSearch:
 
             kernel = self.kernel(**kernel_params).kernel
             m = self.model(10, kernel, **model_params)
-
-            # TODO: make it possible to change solver
             m.fit(X_train, y_train, verbose=True, use_weights=True, solver='cvxopt')
-
+                
             self.all_predictors.append(m)
-            self.all_scores.append(accuracy(m.predict(X_test), y_test))
+            predictions, _ = m.predict(X_test)
+            self.all_scores.append(accuracy(y_test, predictions))
             # Appending method and parameter which might not be ideal
             self.all_parameters.append(parameter)
 
