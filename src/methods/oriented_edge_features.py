@@ -162,8 +162,23 @@ def non_max_suppression(img,angle, nb_angle=8):
                      (np.array([[0, 0, 0], [-1, 1, 0], [0, 0, 0]]), np.array([[0, 0, 0], [0, 1, -1], [0, 0, 0]])),
                      (np.array([[-1, 0, 0], [0, 1, 0], [0, 0, 0]]), np.array([[0, 0, 0], [0, 1, 0], [0, 0, -1]])),
                      ]
+    elif nb_angle == 6:
+        dict_conv = [(np.array([[0, 0, 0], [0, 1, 0], [0, -1, 0]]), np.array([[0, -1, 0], [0, 1, 0], [0, 0, 0]])),
+                     (np.array([[0, 0, 0], [0, 1, 0], [-1 + np.cos(np.pi/6), -np.cos(np.pi/6), 0]]),
+                      np.array([[0, -np.cos(np.pi/6), -1 + np.cos(np.pi/6)], [0, 1, 0], [0, 0, 0]])),
+                     (np.array([[0, 0, 0], [-np.cos(np.pi/6), 1, 0], [-1 + np.cos(np.pi/6), 0, 0]]),
+                      np.array([[0, 0, -1 + np.cos(np.pi/6)], [0, 1, -np.cos(np.pi/6)], [0, 0, 0]])),
+                     (np.array([[0, 0, 0], [-1, 1, 0], [0, 0, 0]]), np.array([[0, 0, 0], [0, 1, -1], [0, 0, 0]])),
+                     (np.array([[-1 + np.cos(np.pi / 6), 0, 0], [-np.cos(np.pi / 6), 1, 0], [0, 0, 0]]),
+                      np.array([[0, 0, 0], [0, 1, -np.cos(np.pi / 6)], [0, 0, -1 + np.cos(np.pi / 6)]])),
+                     (np.array([[-1 + np.cos(np.pi / 6), -np.cos(np.pi / 6), 0], [0, 1, 0], [0, 0, 0]]),
+                      np.array([[0, 0, 0], [0, 1, 0], [0, -np.cos(np.pi / 6), -1 + np.cos(np.pi / 6)]])),
+                     ]
+
 
     conv1, conv2 = dict_conv[angle]
+    print(conv1)
+    print(conv2)
     img_bool = signal.convolve2d(img, conv1, boundary='symm', mode='same') > 0
     img_bool *= signal.convolve2d(img, conv2, boundary='symm', mode='same') >0
 
@@ -196,7 +211,7 @@ class multi_level_energy_features():
         # Apply non max suppression to the square of the transformed images (unsigned gradient)
         for i,im in enumerate(energy_img):
             if self.non_max:
-                energy_img[i] = non_max_suppression(im**2,i)
+                energy_img[i] = non_max_suppression(im**2,i, len(self.filters))
             else :
                 energy_img[i] = im**2
 
@@ -313,7 +328,7 @@ def main():
     plt.savefig('gray_img.png')
 
     # Create and visualize filters
-    filters = create_filters(8,3,1,lambda x,y : f2(x,y,sigma=1,l=3,C=1))
+    filters = create_filters(6,3,1,lambda x,y : f2(x,y,sigma=1,l=3,C=1))
     print(filters[0])
     fig, ax = plt.subplots(1, len(filters))
     for i,z in enumerate(filters):
@@ -331,12 +346,13 @@ def main():
     # Apply non max suppression and visualize
     fig, ax = plt.subplots(1, len(filters))
     for i,img in enumerate(transformed_images):
-        z = non_max_suppression(img**2,i)
+        z = non_max_suppression(img**2,i, len(filters))
         ax[i].imshow(z)
     plt.savefig('nms.png')
+    1/0
 
     # Create a transformation instance MLEF
-    mlef = multi_level_energy_features(16,filters, 15, 0.5)
+    mlef = multi_level_energy_features(16,filters)
     features = mlef.transform_rgb(im)
     print(features.shape)
     plt.figure(); plt.plot(features); plt.savefig('mlef.png')
