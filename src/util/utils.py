@@ -148,3 +148,23 @@ def compute_confusion_matrix(targets, preds,n_labels):
             idx = np.nonzero(targets == i)
             matrix[i,j] = np.sum(preds[idx] == j)
     return matrix
+
+
+def augment_data(Xtr, Ytr):
+    # TODO: try rotating a small angle to right and left
+    # Reshape as image and take the flip
+    img_shp = (Xtr.shape[0], 32, 32, 3)
+    new_Xtr = np.transpose(np.reshape(Xtr, img_shp, order='F'), (0, 2, 1, 3))
+    new_Xtr = np.flip(new_Xtr, axis=2)
+
+    # Then come back to original shape
+    new_Xtr = np.transpose(new_Xtr, (0, 2, 1, 3))
+    new_Xtr = np.reshape(new_Xtr, (Xtr.shape[0], -1), order='F')
+
+    # Concatenate with Xtr
+    new_Xtr = np.concatenate((Xtr, new_Xtr))
+    new_Ytr = np.concatenate((Ytr,Ytr))
+    print(new_Ytr.shape)
+
+    # Return results
+    return new_Xtr, new_Ytr

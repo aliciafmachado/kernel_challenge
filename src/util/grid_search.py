@@ -1,7 +1,6 @@
 """
 Grid search class.
 """
-# TODO: test class
 
 from src.util.utils import get_permutations, accuracy
 import numpy as np

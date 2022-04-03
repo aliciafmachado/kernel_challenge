@@ -36,13 +36,13 @@ def __main__():
     X_train, X_val, y_train, y_val = train_test_split(Xtr, Ytr, test_size=val_split, shuffle=True)
 
     print("Transforming the data")
+    X_train, y_train = ut.augment_data(X_train, y_train)
     filters = create_filters(8,1,0.5,1,5,1)
     mlef = multi_level_energy_features(8 ,filters, 5, 0.5)
-    X_train = mlef.transform_all(X_train)
-    X_val = mlef.transform_all(X_val)
 
-    # Apply PCA on the data TODO
-    # Try with other kernels TODO
+    # Add epsilon to keep the values positive
+    X_train = mlef.transform_all(X_train) + 1e-6
+    X_val = mlef.transform_all(X_val) + 1e-6
 
     ### Normalize
     # Don't normalize when using min and chi2 kernels
