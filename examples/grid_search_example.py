@@ -6,7 +6,7 @@ import numpy as np
 from src.methods.one_vs_rest import MulticlassSVC
 from sklearn.model_selection import train_test_split
 from src.util.kernels import *
-from src.methods.oriented_edge_features import create_filters, multi_level_energy_features
+from src.methods.oriented_edge_features import *
 import src.util.utils as ut
 
 # Best parameters: sigma: 10 (1, 10, 20, 50, 100) between the ones searched
@@ -37,8 +37,8 @@ def __main__():
 
     print("Transforming the data")
     X_train, y_train = ut.augment_data(X_train, y_train)
-    filters = create_filters(8,1,0.5,1,5,1)
-    mlef = multi_level_energy_features(8 ,filters, 5, 0.5)
+    filters = create_filters(8, 3, 1, lambda x,y : f2(x,y,1,3,1))
+    mlef = multi_level_energy_features(8, filters)
 
     # Add epsilon to keep the values positive
     X_train = mlef.transform_all(X_train) + 1e-6
