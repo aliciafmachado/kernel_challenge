@@ -144,9 +144,10 @@ def tile(img, sz):
     tiles = img_grid.transpose(0, 2, 1, 3).reshape(-1,sz,sz)
     return tiles
 
-def non_max_suppression(img,angle):
+def non_max_suppression(img,angle, nb_angle=8):
 
-    dict_conv = [(np.array([[0,0,0],[0,1,0],[0,-1,0]]),np.array([[0,-1,0],[0,1,0],[0,0,0]])),
+    if nb_angle == 8:
+        dict_conv = [(np.array([[0,0,0],[0,1,0],[0,-1,0]]),np.array([[0,-1,0],[0,1,0],[0,0,0]])),
                  (np.array([[0, 0, 0], [0, 1, 0], [-1/2, -1/2, 0]]), np.array([[0, -1/2, -1/2], [0, 1, 0], [0, 0, 0]])),
                  (np.array([[0, 0, 0], [0, 1, 0], [-1, 0, 0]]), np.array([[0, 0, -1], [0, 1, 0], [0, 0, 0]])),
                  (np.array([[0, 0, 0], [-1/2, 1, 0], [-1/2, 0, 0]]), np.array([[0, 0, -1/2], [0, 1, -1/2], [0, 0, 0]])),
@@ -155,6 +156,13 @@ def non_max_suppression(img,angle):
                  (np.array([[-1 , 0, 0], [0, 1, 0], [0, 0, 0]]),np.array([[0, 0, 0], [0, 1, 0], [0, 0, -1]])),
                  (np.array([[-1/2, -1/2, 0], [0, 1, 0], [0, 0, 0]]), np.array([[0, 0, 0], [0, 1, 0], [0, -1/2, -1/2]])),
                  ]
+    elif nb_angle == 4:
+        dict_conv = [(np.array([[0, 0, 0], [0, 1, 0], [0, -1, 0]]), np.array([[0, -1, 0], [0, 1, 0], [0, 0, 0]])),
+                     (np.array([[0, 0, 0], [0, 1, 0], [-1, 0, 0]]), np.array([[0, 0, -1], [0, 1, 0], [0, 0, 0]])),
+                     (np.array([[0, 0, 0], [-1, 1, 0], [0, 0, 0]]), np.array([[0, 0, 0], [0, 1, -1], [0, 0, 0]])),
+                     (np.array([[-1, 0, 0], [0, 1, 0], [0, 0, 0]]), np.array([[0, 0, 0], [0, 1, 0], [0, 0, -1]])),
+                     ]
+
     conv1, conv2 = dict_conv[angle]
     img_bool = signal.convolve2d(img, conv1, boundary='symm', mode='same') > 0
     img_bool *= signal.convolve2d(img, conv2, boundary='symm', mode='same') >0
@@ -169,7 +177,7 @@ class multi_level_energy_features():
     """ Compute oriented gradient histograms for different sizes of tiles from taking the entire
     image to size_min tiling of the image"""
 
-    def __init__(self, size_min,filters, gray = False):
+    def __init__(self, size_min,filters, gray = False, non_max = True):
 
         self.size_min = size_min
         self.gray = gray # Compute the energy response on the gray level image or on each color individually
@@ -177,7 +185,7 @@ class multi_level_energy_features():
         self.filters = filters
         self.tile_sizes = [32//2**i for i in range(self.nb_levels)]
         self.weights = [1/(2**self.nb_levels)] + [1/(2**self.nb_levels - i + 1) for i in range(1,self.nb_levels)]
-
+        self.non_max = non_max
 
     def transform(self,image):
         ''' Return the multi-level energy histogram representation of the array (32,32) image'''
@@ -187,8 +195,10 @@ class multi_level_energy_features():
 
         # Apply non max suppression to the square of the transformed images (unsigned gradient)
         for i,im in enumerate(energy_img):
-            energy_img[i] = non_max_suppression(im**2,i)
-            # energy_img[i] = im**2
+            if self.non_max:
+                energy_img[i] = non_max_suppression(im**2,i)
+            else :
+                energy_img[i] = im**2
 
         # Transform in a big array of size (32*nb_filters ,32)
         energy_img = np.concatenate(energy_img)
