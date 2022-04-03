@@ -125,6 +125,8 @@ def non_max_suppression(img,angle):
     conv1, conv2 = dict_conv[angle]
     img_bool = signal.convolve2d(img, conv1, boundary='symm', mode='same') > 0
     img_bool *= signal.convolve2d(img, conv2, boundary='symm', mode='same') >0
+
+    # print(np.sum(img_bool)/(img.shape[0]*img.shape[1]))
     return img*img_bool
 
 
@@ -147,11 +149,19 @@ class multi_level_energy_features():
         ''' Return the multi-level energy histogram representation of the array (32,32) image'''
 
         # First apply the energy filters
-        energy_img = np.concatenate(apply_filters(image,self.filters)) # Big image of size (32*nb_filters ,32)
-        energy_img = energy_img**2
+        energy_img = apply_filters(image,self.filters) # Big image of size (32*nb_filters ,32)
+
+        # Apply non max suppression
+        for i,im in enumerate(energy_img):
+            energy_img[i] = non_max_suppression(im**2,i)
+            # energy_img[i] = im**2
+
+        energy_img = np.concatenate(energy_img)
 
         # Then normalize in each 16*16 squares accross directions
         energy_img = normalize16(energy_img).reshape(-1,32)
+
+
 
         # Then tile the image and sum the normalized response in each tile
         level_hist = []
@@ -256,9 +266,9 @@ def main():
     im = Xte[1]
     # im = Xtr[np.random.randint(0,len(Xtr))] # Select random image
     imR, imG, imB = im[:1024].reshape(32,32), im[1024:2048].reshape(32,32), im[2048:].reshape(32,32)
-    # gray = np.mean([imR, imG, imB], axis=0)
+    gray = np.mean([imR, imG, imB], axis=0)
 
-    gray = misc.ascent()
+    # gray = misc.ascent()
     # Visualize gray image
     plt.figure()
     plt.imshow(gray, cmap='gray')
@@ -281,14 +291,13 @@ def main():
 
     # Apply non max suppression and visualize
     fig, ax = plt.subplots(1, len(filters))
-    for i,im in enumerate(transformed_images):
-        z = non_max_suppression(im**2,i)
+    for i,img in enumerate(transformed_images):
+        z = non_max_suppression(img**2,i)
         ax[i].imshow(z)
     plt.savefig('nms.png')
-    1/0
 
     # Create a transformation instance MLEF
-    mlef = multi_level_energy_features(8,filters, 15, 0.5)
+    mlef = multi_level_energy_features(16,filters, 15, 0.5)
     features = mlef.transform_rgb(im)
     print(features.shape)
     plt.figure(); plt.plot(features); plt.savefig('mlef.png')

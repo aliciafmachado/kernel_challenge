@@ -2,7 +2,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from src.methods.one_vs_rest import MulticlassSVC
-from src.util.kernels import RBF, Polynomial, Intersection, Linear
+from src.util.kernels import RBF, Polynomial, Intersection, Linear, Chi2
 from sklearn.model_selection import train_test_split
 import src.util.utils as ut
 from src.methods.kernel_pca import *
@@ -47,16 +47,16 @@ if not write_test_results:
 
 
 # ### Transform into orientation histograms
-# filters = create_filters(8,1,0.5,1,5,1)
-# en_hist = energy_hist(filters,nbins=20,bound=0.5)
-# Xtr = en_hist.transform_all(Xtr)
-# Xte = en_hist.transform_all(Xte)
+# filters = create_filters(8,1,3,1,3,1)
+# en_hist = energy_hist(filters,nbins=5,bound=0.5)
+# Xtr = en_hist.transform_all(Xtr) + 1e-5
+# Xte = en_hist.transform_all(Xte) + 1e-5
 
-## Transform into multilevel energy features
-filters = create_filters(8,1,0.5,1,5,1)
-mlef = multi_level_energy_features(8 ,filters, 5, 0.5)
-Xtr = mlef.transform_all(Xtr)
-Xte = mlef.transform_all(Xte)
+# Transform into multilevel energy features
+filters = create_filters(8, 1, 3, 1, 3, 1)
+mlef = multi_level_energy_features(8 ,filters, 15, 0.5)
+Xtr = mlef.transform_all(Xtr) +1e-6
+Xte = mlef.transform_all(Xte) + 1e-6
 
 ### Apply PCA
 # kernel_fn = Intersection().kernel
@@ -71,7 +71,7 @@ Xte = mlef.transform_all(Xte)
 print(f'Shape of features {np.shape(Xtr)}')
 
 ### Normalize
-Xtr, Xte = ut.normalize(Xtr,Xte)
+# Xtr, Xte = ut.normalize(Xtr,Xte)
 
 
 
@@ -85,12 +85,12 @@ Xtr, Xte = ut.normalize(Xtr,Xte)
 
 # Choose a kernel
 
-sigma = 10
-kernel = RBF(sigma=sigma).kernel
+# sigma = 10
+# kernel = RBF(sigma=sigma).kernel
 
 # kernel = Intersection().kernel # Don"t normalize if you use this!
-
 # kernel = Linear().kernel
+kernel = Chi2().kernel
 
 C = 1
 classifier = MulticlassSVC(10,kernel,C, tol = 1e-2)
