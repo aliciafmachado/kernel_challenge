@@ -53,7 +53,7 @@ if not write_test_results:
 # Xte = en_hist.transform_all(Xte) + 1e-5
 
 # Transform into multilevel energy features
-filters = create_filters(8, 1, 3, 1, 3, 1)
+filters = create_filters(8, 3, 1, lambda x,y : f2(x,y,1,3,1))
 mlef = multi_level_energy_features(8 ,filters, 15, 0.5)
 Xtr = mlef.transform_all(Xtr) +1e-6
 Xte = mlef.transform_all(Xte) + 1e-6

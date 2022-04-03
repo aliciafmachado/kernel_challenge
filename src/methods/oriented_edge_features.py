@@ -11,16 +11,49 @@ from scipy import signal, misc
 ######## FUNCTIONS TO CREATE FILTERS TO EXTRACT ENERGY FEATURES
 ###############################################################
 
+# Below are implemented filters to extract oriented energy features
+# f1 is the even filter, f2 the odd one. see https://link.springer.com/content/pdf/10.1023/A:1011174803800.pdf
+# (page 11)
+# https://dspace.mit.edu/bitstream/handle/1721.1/3240/P-2075-24919425.pdf?sequence=1&isAllowed=y is also useful
+# to under
+
 def f1(x, y, sigma, l, C):
+    """ Even filter. Sigma is the std deviation of one of the Gaussian, l is the ratio sigma1/sigma2
+    that characterizes the elongation of the filter. See the article for more precision.
+    C is a normalisation constant.
+    """
     trmy = 2/sigma**2 * (2/sigma**2*y**2-1)*np.exp(-y**2/sigma**2)
     return trmy/C*np.exp(-x**2/(l**2*sigma**2))
 
-def rotate_f1(x,y,sigma,l,C, theta):
+def f2(x,y,sigma, l, C):
+    """
+    Odd filter.
+    :param x:
+    :param y:
+    :param sigma: standard deviation of the gaussian in y
+    :param l: ratio
+    :param C: normalisation constant
+    :return: the value in x, y
+    """
+    trmy = -2*y/sigma**2*np.exp(-y**2/sigma)
+    return trmy/C*np.exp(-x**2/(l**2*sigma**2))
+
+
+def rotate_f(x,y,f, theta):
+    """ Apply a rotation of theta to the function f"""
     x_ = np.cos(theta)*x + np.sin(theta)*y
     y_ = -np.sin(theta)*x + np.cos(theta)*y
-    return f1(x_,y_,sigma,l,C)
+    return f(x_,y_)
 
-def create_filters(nb,sigma,l,C,size,born):
+def create_filters(nb,size,born,f):
+    """
+
+    :param nb: number of orientations
+    :param size: number of pixels in the convolution kernel
+    :param born: the filter is computed on [-bound, bound]**2
+    :param f: the filter to use
+    :return: a list of convolutions kernels
+    """
     grid = np.linspace(-born, born, size)
     x,y = np.meshgrid(grid, grid)
 
@@ -28,7 +61,7 @@ def create_filters(nb,sigma,l,C,size,born):
     step = np.pi/nb
     angle = 0
     for i in range(nb):
-        z = rotate_f1(x,y,sigma,l,C,angle)
+        z = rotate_f(x,y,f,angle)
         filters.append(z.copy())
         angle+=step
     return filters
@@ -133,7 +166,10 @@ def non_max_suppression(img,angle):
 
 class multi_level_energy_features():
 
-    def __init__(self, size_min,filters, nbins, bound, gray = False, sum = True):
+    """ Compute oriented gradient histograms for different sizes of tiles from taking the entire
+    image to size_min tiling of the image"""
+
+    def __init__(self, size_min,filters, gray = False):
 
         self.size_min = size_min
         self.gray = gray # Compute the energy response on the gray level image or on each color individually
@@ -141,44 +177,36 @@ class multi_level_energy_features():
         self.filters = filters
         self.tile_sizes = [32//2**i for i in range(self.nb_levels)]
         self.weights = [1/(2**self.nb_levels)] + [1/(2**self.nb_levels - i + 1) for i in range(1,self.nb_levels)]
-        self.sum = sum
-        self.nbins = nbins
-        self.bound = bound
+
 
     def transform(self,image):
         ''' Return the multi-level energy histogram representation of the array (32,32) image'''
 
         # First apply the energy filters
-        energy_img = apply_filters(image,self.filters) # Big image of size (32*nb_filters ,32)
+        energy_img = apply_filters(image,self.filters) # list of images
 
-        # Apply non max suppression
+        # Apply non max suppression to the square of the transformed images (unsigned gradient)
         for i,im in enumerate(energy_img):
             energy_img[i] = non_max_suppression(im**2,i)
             # energy_img[i] = im**2
 
+        # Transform in a big array of size (32*nb_filters ,32)
         energy_img = np.concatenate(energy_img)
 
-        # Then normalize in each 16*16 squares accross directions
+        # Then normalize in each 16*16 squares accross filters directions
         energy_img = normalize16(energy_img).reshape(-1,32)
 
-
-
-        # Then tile the image and sum the normalized response in each tile
+        # Then tile the image at different levels and sum the normalized response in each tile
         level_hist = []
         for i,sz in enumerate(self.tile_sizes):
             tiles = tile(energy_img,sz)
-            # histograms = 1/(4**(self.nb_levels - i))* np.sum(tiles, axis=(1,2))
-            if self.sum :
-                histograms = self.weights[i]*np.sum(np.abs(tiles), axis=(1,2 ))
-                level_hist.append(histograms)
-            else :
-                for t in tiles:
-                    level_hist.append(np.histogram(np.abs(t), self.nbins, range=[-self.bound, self.bound], density=True)[0])
+            histograms = self.weights[i]*np.sum(np.abs(tiles), axis=(1,2 ))
+            level_hist.append(histograms)
 
         return np.concatenate(level_hist)
 
     def transform_rgb(self,im):
-        """Compute the level_histograms representation for each channel and concatenate"""
+        """Compute the level_histograms representation for each channel of RGB image (32*32*3) and concatenate"""
         imR, imG, imB = im[:1024].reshape(32, 32), im[1024:2048].reshape(32, 32), im[2048:].reshape(32, 32)
 
         if self.gray:
@@ -275,12 +303,13 @@ def main():
     plt.savefig('gray_img.png')
 
     # Create and visualize filters
-    filters = create_filters(8,1,3,1,3,1)
+    filters = create_filters(8,3,1,lambda x,y : f2(x,y,sigma=1,l=3,C=1))
     print(filters[0])
     fig, ax = plt.subplots(1, len(filters))
     for i,z in enumerate(filters):
         ax[i].imshow(z)
-    plt.savefig('filters.png')
+    plt.savefig('filtersf2.png')
+
 
     # Visualize the effect on the image
     transformed_images = apply_filters(gray,filters)
