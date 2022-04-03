@@ -23,7 +23,7 @@ def svm_gridsearch(X_train, X_val, y_train, y_val, model, kernel,
 
 def __main__():
     # Load data
-    data_path = 'data/'
+    data_path = '../data/'
 
     seed = 42
     np.random.seed(seed)
@@ -37,8 +37,9 @@ def __main__():
 
     print("Transforming the data")
     X_train, y_train = ut.augment_data(X_train, y_train)
-    filters = create_filters(8, 3, 1, lambda x,y : f2(x,y,1,3,1))
+    filters = create_filters(8, 3, 1, lambda x, y: f2(x, y, 1, 3, 1))
     mlef = multi_level_energy_features(8, filters)
+
 
     # Add epsilon to keep the values positive
     X_train = mlef.transform_all(X_train) + 1e-6
