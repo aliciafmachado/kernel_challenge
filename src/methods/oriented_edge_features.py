@@ -177,8 +177,6 @@ def non_max_suppression(img,angle, nb_angle=8):
 
 
     conv1, conv2 = dict_conv[angle]
-    print(conv1)
-    print(conv2)
     img_bool = signal.convolve2d(img, conv1, boundary='symm', mode='same') > 0
     img_bool *= signal.convolve2d(img, conv2, boundary='symm', mode='same') >0
 
@@ -305,7 +303,6 @@ class bag_of_hist():
         featuresB = self.transform(imB)
 
         features = np.concatenate((featuresR, featuresG,featuresB), axis=1)
-        print(features.shape)
         return features
 
 
