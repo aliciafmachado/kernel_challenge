@@ -155,7 +155,7 @@ def rotate_angle(img, angle):
     return ndimage.rotate(img, angle, reshape=False)
 
 
-def augment_data_(Xtr, Ytr, vertical=False, rotate=False, angle=None):
+def augment_data(Xtr, Ytr, vertical=False, rotate=False, angle=None):
     # Reshape as image and take the flip
     n_or = Xtr.shape[0]
     img_shp = (n_or, 32, 32, 3)
