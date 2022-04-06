@@ -140,9 +140,16 @@ def tile(img, sz):
     :param sz: the size of the tiles
     :return: all the tiles in the image. shape (-1, sz,sz)
     """
-    img_grid = img.reshape(img.shape[0]//sz,sz,img.shape[1]//sz,sz).copy()
+
+    img_grid = img.reshape((img.shape[0]//sz,sz,img.shape[1]//sz,sz)).copy()
     tiles = img_grid.transpose(0, 2, 1, 3).reshape(-1,sz,sz)
     return tiles
+
+def pad_img(img):
+    """ img 32*nb_filters , 32"""
+    img = img.copy().reshape(-1,32,32)
+    img = np.pad(img,[[0,0],[0,1],[0,1]], mode = 'reflect')
+    return img.reshape(-1,33)
 
 def non_max_suppression(img,angle, nb_angle=8):
 
@@ -185,19 +192,21 @@ def non_max_suppression(img,angle, nb_angle=8):
 
 
 
-class multi_level_energy_features():
+class multi_level_energy_features_custom():
 
     """ Compute oriented gradient histograms for different sizes of tiles from taking the entire
     image to size_min tiling of the image"""
 
-    def __init__(self, size_min,filters, gray = False, non_max = True):
+    def __init__(self, tiles_sizes, level_weigths,filters, gray = False, non_max = True):
 
-        self.size_min = size_min
+
         self.gray = gray # Compute the energy response on the gray level image or on each color individually
-        self.nb_levels = int(np.log2(32/size_min)) + 1
+        self.nb_levels = len(tiles_sizes)
         self.filters = filters
-        self.tile_sizes = [32//2**i for i in range(self.nb_levels)]
-        self.weights = [1/(2**self.nb_levels)] + [1/(2**self.nb_levels - i + 1) for i in range(1,self.nb_levels)]
+        self.tile_sizes = tiles_sizes
+        self.weights = level_weigths
+        # self.tile_sizes = [32//2**i for i in range(self.nb_levels)]
+        # self.weights = [1/(2**self.nb_levels)] + [1/(2**self.nb_levels - i + 1) for i in range(1,self.nb_levels)]
         self.non_max = non_max
 
     def transform(self,image):
@@ -222,7 +231,10 @@ class multi_level_energy_features():
         # Then tile the image at different levels and sum the normalized response in each tile
         level_hist = []
         for i,sz in enumerate(self.tile_sizes):
-            tiles = tile(energy_img,sz)
+            if sz == 11:
+                tiles = tile(pad_img(energy_img), sz)
+            else :
+                tiles = tile(energy_img,sz)
             histograms = self.weights[i]*np.sum(np.abs(tiles), axis=(1,2 ))
             level_hist.append(histograms)
 
@@ -249,6 +261,14 @@ class multi_level_energy_features():
             all_features.append(self.transform_rgb(im))
         return np.array(all_features)
 
+class multi_level_energy_features(multi_level_energy_features_custom):
+
+    def __init__(self, size_min, filters,gray = False, non_max = False ):
+        nb_levels = np.log2(32//size_min) + 1
+        tile_sizes = [32//2**i for i in range(self.nb_levels)]
+        weights = [1/(2**nb_levels)] + [1/(2**self.nb_levels - i + 1) for i in range(1,nb_levels)]
+
+        super().__init__(tile_sizes,weights,filters,gray,non_max)
 
 ##########################################################################
 ##### BAG OF HISTOGRAMS FEATURES
@@ -325,7 +345,7 @@ def main():
     plt.savefig('gray_img.png')
 
     # Create and visualize filters
-    filters = create_filters(6,3,1,lambda x,y : f2(x,y,sigma=1,l=3,C=1))
+    filters = create_filters(8,3,1,lambda x,y : f2(x,y,sigma=1,l=3,C=1))
     print(filters[0])
     fig, ax = plt.subplots(1, len(filters))
     for i,z in enumerate(filters):
@@ -346,10 +366,11 @@ def main():
         z = non_max_suppression(img**2,i, len(filters))
         ax[i].imshow(z)
     plt.savefig('nms.png')
-    1/0
 
     # Create a transformation instance MLEF
-    mlef = multi_level_energy_features(16,filters)
+    tile_sizes = np.array([32,16,11,8])
+    level_weights = 1/tile_sizes**2
+    mlef = multi_level_energy_features_custom(tile_sizes,level_weights,filters, non_max=False)
     features = mlef.transform_rgb(im)
     print(features.shape)
     plt.figure(); plt.plot(features); plt.savefig('mlef.png')
