@@ -2,7 +2,6 @@
 
 from random import betavariate
 import numpy as np
-import warnings
 
 
 class RBF :

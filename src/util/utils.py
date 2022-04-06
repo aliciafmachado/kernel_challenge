@@ -10,6 +10,7 @@ import cvxopt
 from matplotlib import pyplot as plt
 from scipy import signal
 import itertools
+from scipy import ndimage
 
 
 def accuracy(y, pred):
@@ -150,21 +151,73 @@ def compute_confusion_matrix(targets, preds,n_labels):
     return matrix
 
 
-def augment_data(Xtr, Ytr):
-    # TODO: try rotating a small angle to right and left
+def rotate_angle(img, angle):
+    return ndimage.rotate(img, angle, reshape=False)
+
+
+def augment_data_(Xtr, Ytr, vertical=False, rotate=False, angle=None):
     # Reshape as image and take the flip
-    img_shp = (Xtr.shape[0], 32, 32, 3)
-    new_Xtr = np.transpose(np.reshape(Xtr, img_shp, order='F'), (0, 2, 1, 3))
-    new_Xtr = np.flip(new_Xtr, axis=2)
+    n_or = Xtr.shape[0]
+    img_shp = (n_or, 32, 32, 3)
+
+    Xtr_transformed = np.transpose(np.reshape(Xtr, img_shp, order='F'), (0, 2, 1, 3))
+    new_Xtr = np.flip(Xtr_transformed, axis=2)
+
+    if vertical:
+        v_Xtr = np.array([np.flipud(Xtr_transformed[i]) for i in range(n_or)])
+        new_Xtr = np.concatenate([new_Xtr, v_Xtr])
+
+    if rotate:
+        pos_rotation_Xtr = np.array([rotate_angle(Xtr_transformed[i], angle) for i in range(n_or)])
+        neg_rotation_Xtr = np.array([rotate_angle(Xtr_transformed[i], -angle) for i in range(n_or)])
+        new_Xtr = np.concatenate([new_Xtr, pos_rotation_Xtr, neg_rotation_Xtr])
 
     # Then come back to original shape
     new_Xtr = np.transpose(new_Xtr, (0, 2, 1, 3))
-    new_Xtr = np.reshape(new_Xtr, (Xtr.shape[0], -1), order='F')
+    new_Xtr = np.reshape(new_Xtr, (new_Xtr.shape[0], -1), order='F')
 
     # Concatenate with Xtr
-    new_Xtr = np.concatenate((Xtr, new_Xtr))
+    new_Xtr = np.concatenate([Xtr, new_Xtr])
     new_Ytr = np.concatenate((Ytr,Ytr))
-    print(new_Ytr.shape)
+
+    if vertical:
+        new_Ytr = np.concatenate((new_Ytr, Ytr))
+
+    if rotate:
+        new_Ytr = np.concatenate((new_Ytr, Ytr, Ytr))
 
     # Return results
     return new_Xtr, new_Ytr
+
+
+def train_test_split(X, Y, test_size=0.2, random_state=None, shuffle=False):
+    """
+    Split the data into training and test sets.
+    :param X: inputs
+    :param Y: labels
+    :param test_size: size of the test set
+    :param random_state: a random state for the permutation
+    :param shuffle: if the data should be shuffled
+    :return:
+    """
+    n_samples = X.shape[0]
+    n_train = int(n_samples * (1. - test_size))
+
+    # Set random seed if there is one
+    if random_state is not None:
+        np.random.seed(random_state)
+
+    # Shuffle the data if shuffle is True
+    if shuffle:
+        permutation = np.random.permutation(n_samples)
+    
+    X = X[permutation]
+    Y = Y[permutation]
+
+    # Split the data
+    X_train = X[:n_train]
+    X_test = X[n_train:]
+    Y_train = Y[:n_train]
+    Y_test = Y[n_train:]
+
+    return X_train, X_test, Y_train, Y_test

@@ -32,9 +32,17 @@ class GridSearch:
             if self.tune == "kernel":
                 kernel_params = parameter
                 model_params = self.model_params
+                
             elif self.tune == "model":
                 model_params = parameter
                 kernel_params = self.kernel_params
+
+            elif self.tune == "filter":
+                pass
+            elif self.tune == "energy_hist":
+                pass
+            elif self.tune == "all":
+                pass
 
             kernel = self.kernel(**kernel_params).kernel
             m = self.model(10, kernel, **model_params)
