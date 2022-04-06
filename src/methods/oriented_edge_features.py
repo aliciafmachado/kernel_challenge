@@ -264,9 +264,9 @@ class multi_level_energy_features_custom():
 class multi_level_energy_features(multi_level_energy_features_custom):
 
     def __init__(self, size_min, filters,gray = False, non_max = False ):
-        nb_levels = np.log2(32//size_min) + 1
+        self.nb_levels = int(np.log2(32//size_min)) + 1
         tile_sizes = [32//2**i for i in range(self.nb_levels)]
-        weights = [1/(2**nb_levels)] + [1/(2**self.nb_levels - i + 1) for i in range(1,nb_levels)]
+        weights = [1/(2**self.nb_levels)] + [1/(2**self.nb_levels - i + 1) for i in range(1,self.nb_levels)]
 
         super().__init__(tile_sizes,weights,filters,gray,non_max)
 
@@ -371,6 +371,9 @@ def main():
     tile_sizes = np.array([32,16,11,8])
     level_weights = 1/tile_sizes**2
     mlef = multi_level_energy_features_custom(tile_sizes,level_weights,filters, non_max=False)
+    
+    # mlef = multi_level_energy_features(8,filters)
+    
     features = mlef.transform_rgb(im)
     print(features.shape)
     plt.figure(); plt.plot(features); plt.savefig('mlef.png')
