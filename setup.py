@@ -21,7 +21,7 @@ setuptools.setup(
     ],
     package_dir={"kernel_challenge": "src"},
     packages=setuptools.find_packages(),
-    python_requires=">=3.9",
+    python_requires=">=3.7.13",
     install_requires=[
                 'matplotlib',
                 'numpy',
