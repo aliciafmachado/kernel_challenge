@@ -27,13 +27,9 @@ def f1(x, y, sigma, l, C):
 
 def f2(x,y,sigma, l, C):
     """
-    Odd filter.
-    :param x:
-    :param y:
-    :param sigma: standard deviation of the gaussian in y
-    :param l: ratio
-    :param C: normalisation constant
-    :return: the value in x, y
+    Odd filter. Sigma is the std deviation of the Gaussian in y, l is the ratio sigma1/sigma2
+    that characterizes the elongation of the filter. See the article for more precision.
+    C is a normalisation constant.
     """
     trmy = -2*y/sigma**2*np.exp(-y**2/sigma)
     return trmy/C*np.exp(-x**2/(l**2*sigma**2))
@@ -67,6 +63,7 @@ def create_filters(nb,size,born,f):
     return filters
 
 def apply_filters(img, filters):
+    """Apply the set of filters to an image and returned all the filters responses"""
 
     transformed_images= []
     for z in filters:
@@ -79,6 +76,9 @@ def apply_filters(img, filters):
 ##### A FIRST CLASS TO REPRESENT IMAGES WITH ENERGY HISTOGRAMS ####
 
 class energy_hist():
+
+    '''For each channel we compute the oriented response given a set of filters
+    and then map each filter response to an histogram (with nbins, between (-bound,bound))'''
 
     def __init__(self, filters, nbins, bound):
         self.filters = filters
@@ -115,15 +115,15 @@ class energy_hist():
 # based on http://acberg.com/papers/mbm08cvpr.pdf
 
 def norm16(img):
-    """Compute the sum of energy response in each 16x16 subsquare"""
+    """Compute the sum of absolute energy response in each 16x16 subsquare"""
     img_grid = img.reshape(img.shape[0]//16,16,img.shape[1]//16,16)
     img_grid = img_grid.transpose(0, 2, 1, 3)
     norm_factors = np.sum(np.abs(img_grid),axis=(2,3))
     return norm_factors
 
 def normalize16(energy_images):
-    '''Normalizes accross directions each subsquare of size 16x16 in the image
-    energy_images is of shape (nb_filter*32,32)'''
+    '''Normalizes in L1 norm accross filters each subsquare of size 16x16 in the image
+    input : energy_images is of shape (nb_filter*32,32)'''
 
     norms_factor = norm16(energy_images) # shape nb_filter*2,2
     norms_factor = np.abs(norms_factor.reshape((-1, 2, 2)))
@@ -146,13 +146,18 @@ def tile(img, sz):
     return tiles
 
 def pad_img(img):
-    """ img 32*nb_filters , 32"""
+    """ img 32*nb_filters , 32. A function to pad each 32x32 image to a 33x33 image to be divided
+    by tile_size = 11"""
     img = img.copy().reshape(-1,32,32)
     img = np.pad(img,[[0,0],[0,1],[0,1]], mode = 'reflect')
     return img.reshape(-1,33)
 
 def non_max_suppression(img,angle, nb_angle=8):
-
+    """ A simple implementation of non max suppression. This is a potential processing step
+    to apply after filtering the image to suppress the gradient if it is not maximal in the given
+    direction.
+    Only works with nb_angle = 8,6,4
+    """
     if nb_angle == 8:
         dict_conv = [(np.array([[0,0,0],[0,1,0],[0,-1,0]]),np.array([[0,-1,0],[0,1,0],[0,0,0]])),
                  (np.array([[0, 0, 0], [0, 1, 0], [-1/2, -1/2, 0]]), np.array([[0, -1/2, -1/2], [0, 1, 0], [0, 0, 0]])),
@@ -194,8 +199,11 @@ def non_max_suppression(img,angle, nb_angle=8):
 
 class multi_level_energy_features_custom():
 
-    """ Compute oriented gradient histograms for different sizes of tiles from taking the entire
-    image to size_min tiling of the image"""
+    """ Compute oriented gradient histograms for different sizes of tiles. This class implement
+    a more general version than the one described in the article since we can specify the tile size
+    at each level. For instance tile_sizes = [32,16,11,8].
+    The level_weights are the weights to apply to each feature at a same level. (Useful in particular
+    to use with the Intersection Kernel)"""
 
     def __init__(self, tiles_sizes, level_weigths,filters, gray = False, non_max = True):
 
@@ -263,6 +271,12 @@ class multi_level_energy_features_custom():
 
 class multi_level_energy_features(multi_level_energy_features_custom):
 
+    """ The exact version described in the article where the tile sizes are
+    divided by (2,2) between levels. Examples (32,32),(16,16),(8,8)
+    - size_min is the minimal tile size we descend to.
+    - filters are the convolution kernels to use to compute oriented energy.
+    """
+
     def __init__(self, size_min, filters,gray = False, non_max = False ):
         self.nb_levels = int(np.log2(32//size_min)) + 1
         tile_sizes = [32//2**i for i in range(self.nb_levels)]
@@ -270,60 +284,6 @@ class multi_level_energy_features(multi_level_energy_features_custom):
 
         super().__init__(tile_sizes,weights,filters,gray,non_max)
 
-##########################################################################
-##### BAG OF HISTOGRAMS FEATURES
-
-class bag_of_hist():
-
-    def __init__(self, patch_size, stride, bins, bound, filters):
-        self.patch_size = patch_size
-        self.stride = stride
-        self.bins = bins
-        self.bound = bound
-        self.filters = filters
-
-    def return_all_tiles(self, img):
-        tiles = []
-        i = 0
-        while i + self.patch_size <= img.shape[0]:
-            j = 0
-            while j + self.patch_size <= img.shape[1]:
-                tiles.append(img[i:i+self.patch_size,j:j+self.patch_size].copy())
-                j += self.stride
-            i+=self.stride
-
-        return tiles
-
-    def transform(self,img):
-        """returns a bag of patch features for the image"""
-
-        transformed_images = apply_filters(img,self.filters)
-
-        #Extract all tiles
-        transformed_tiles = []
-        for en_img in transformed_images:
-            transformed_tiles.append(self.return_all_tiles(en_img))
-
-        #For each tile associate the feature vector
-        bag_features = []
-        for i in range(len(transformed_tiles[0])):
-            features = []
-            for j in range(len(transformed_tiles)):
-                features.append(np.histogram(transformed_tiles[j][i], self.bins, [-self.bound, self.bound], density = True)[0])
-            features = np.concatenate(features)
-            bag_features.append(features)
-
-        return np.array(bag_features)
-
-    def transform_rgb(self,im):
-        imR, imG, imB = im[:1024].reshape(32, 32), im[1024:2048].reshape(32, 32), im[2048:].reshape(32, 32)
-
-        featuresR = self.transform(imR)
-        featuresG = self.transform(imG)
-        featuresB = self.transform(imB)
-
-        features = np.concatenate((featuresR, featuresG,featuresB), axis=1)
-        return features
 
 
 ###########################################################################
@@ -344,35 +304,37 @@ def main():
     plt.imshow(gray, cmap='gray')
     plt.savefig('gray_img.png')
 
-    # Create and visualize filters
-    filters = create_filters(8,3,1,lambda x,y : f2(x,y,sigma=1,l=3,C=1))
-    print(filters[0])
-    fig, ax = plt.subplots(1, len(filters))
-    for i,z in enumerate(filters):
-        ax[i].imshow(z)
-    plt.savefig('filtersf2.png')
+    # Create and visualize filters and the effect on the images
+    filters1 = create_filters(8,3,1,lambda x,y : f1(x,y,sigma=1,l=3,C=1))
+    transformed_images1 = apply_filters(gray,filters1)
+    filters2 = create_filters(8,3,1,lambda x,y : f2(x,y,sigma=1,l=3,C=1))
+    transformed_images2 = apply_filters(gray,filters2)
+
+    fig, ax = plt.subplots(4, len(filters1), figsize = (15,10))
+    for i,z in enumerate(filters1):
+        ax[0,i].imshow(z)
+        ax[1,i].imshow(filters2[i])
+        ax[2,i].imshow(transformed_images1[i])
+        ax[3,i].imshow(transformed_images2[i])
+    plt.axis('off')
+    plt.savefig('results.png')
 
 
-    # Visualize the effect on the image
-    transformed_images = apply_filters(gray,filters)
-    fig, ax = plt.subplots(1, len(filters))
-    for i,z in enumerate(transformed_images):
-        ax[i].imshow(z**2)
-    plt.savefig('energy.png')
+
 
     # Apply non max suppression and visualize
-    fig, ax = plt.subplots(1, len(filters))
-    for i,img in enumerate(transformed_images):
-        z = non_max_suppression(img**2,i, len(filters))
+    fig, ax = plt.subplots(1, len(filters1))
+    for i,img in enumerate(transformed_images1):
+        z = non_max_suppression(img**2,i, len(filters1))
         ax[i].imshow(z)
     plt.savefig('nms.png')
 
     # Create a transformation instance MLEF
-    tile_sizes = np.array([32,16,11,8])
-    level_weights = 1/tile_sizes**2
-    mlef = multi_level_energy_features_custom(tile_sizes,level_weights,filters, non_max=False)
+    # tile_sizes = np.array([32,16,11,8])
+    # level_weights = 1/tile_sizes**2
+    # mlef = multi_level_energy_features_custom(tile_sizes,level_weights,filters, non_max=False)
     
-    # mlef = multi_level_energy_features(8,filters)
+    mlef = multi_level_energy_features(8,filters1)
     
     features = mlef.transform_rgb(im)
     print(features.shape)
