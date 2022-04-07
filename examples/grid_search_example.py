@@ -4,13 +4,11 @@ Grid search script example.
 from src.util.grid_search import GridSearch
 import numpy as np
 from src.methods.one_vs_rest import MulticlassSVC
-from sklearn.model_selection import train_test_split
 from src.util.kernels import *
 from src.methods.oriented_edge_features import *
 import src.util.utils as ut
-
-# Best parameters: sigma: 10 (1, 10, 20, 50, 100) between the ones searched
-#                  C: 1.0 (0.8, 0.9, 1.0, 1.1, 1.2) with fixed sigma and other params
+import pickle
+import os
 
 
 # Search for best parameters on gaussian kernel and then on polynomial kernel
@@ -21,58 +19,69 @@ def svm_gridsearch(X_train, X_val, y_train, y_val, model, kernel,
     gs.fit(X_train, y_train, X_val, y_val, verbose=verbose)
     return gs
 
+
 def __main__():
     # Load data
-    data_path = '../data/'
+    data_path = 'data/'
 
+    # You might want to change some parameters below
+    name = 'example_tuning'
+    augment = False
     seed = 42
+    test_size = 0.2
+
+    # Set seed
     np.random.seed(seed)
-    val_split = 0.2
 
     # Using preprocessing in main_one_vs_all.py
     # Transform into oriented histograms
     print("Reading the data")
     Xtr, Ytr, _ = ut.read_data(data_path)
-    X_train, X_val, y_train, y_val = train_test_split(Xtr, Ytr, test_size=val_split, shuffle=True)
+    X_train, X_val, y_train, y_val = ut.train_test_split(Xtr, Ytr, test_size=test_size, shuffle=True)
 
     print("Transforming the data")
-    X_train, y_train = ut.augment_data(X_train, y_train)
-    filters = create_filters(8, 3, 1, lambda x, y: f2(x, y, 1, 3, 1))
-    mlef = multi_level_energy_features(8, filters)
+    if augment:
+        X_train, y_train = ut.augment_data(X_train, y_train)
 
+    # Example using f1 filter only
+    # But we could easily test with 1. f2; 2. f1 and f2;
+    filters = create_filters(8, 3, 1, lambda x, y: f1(x, y, 1, 3, 1))
+    mlef = multi_level_energy_features(8, filters, non_max=False)
 
     # Add epsilon to keep the values positive
     X_train = mlef.transform_all(X_train) + 1e-6
     X_val = mlef.transform_all(X_val) + 1e-6
 
     ### Normalize
-    # Don't normalize when using min and chi2 kernels
+    # Don't normalize when using GHI and Chi2 kernels !!
     # X_train, X_val = ut.normalize(X_train, X_val)
 
     # Search for best parameters using gaussian kernel
     kernel = 'chi2'
     print(f'Searching for best parameters using {kernel} kernel')
     
-    gamma = [1.5]
-    parameters= {'gamma': gamma}
+    # Case when searching kernels
+    tune = "kernel"
+    param = [1.0, 1.5, 2.0]
+    name_param = 'gamma'
+    parameters = {name_param: param}
+
+    # If you want to search, e.g., C, you can do it like this:
+    # parameters = {'C': [0.1, 1, 10, 100]}
+    # And then, you have to set tune to 'model'
+    # Other than that, you have to set default values for the kernel, e.g.:
+    # kernel_params = {'gamma': 1}
+
     model = MulticlassSVC
     model_params={'C': 1, 'epsilon': 1e-3, 'tol': 1e-2}
     GS1 = svm_gridsearch(X_train, X_val, y_train, y_val, model, kernel, parameters, 
-                        tune="kernel", verbose=True, model_params=model_params, kernel_params=None)
+                        tune=tune, verbose=True, model_params=model_params, kernel_params=None)
+    
     print(f'Best score: {GS1.best_score} using {GS1.best_hyperparameters}')
 
-    # # Search for best parameters using polynomial kernel
-    # print("Searching for best parameters using polynomial kernel")
-    # degree = [2, 3, 4, 5]
-    # coef0 = [0.1, 0.5, 1, 2, 5]
-    # parameters = {'degree': degree, 'coef0': coef0}
-    # kernel = Polynomial
-    # GS2 = svm_gridsearch(X_train, X_val, y_train, y_val,
-    #                     model, kernel, parameters, tune="kernel", verbose=True)
-    # print(f'Best score: {GS2.best_score} using {GS2.best_hyperparameters}')
-
-    # Do preprocessing on Xte and save it
-    # TODO: use predict fn from gridsearch or simply use the best parameters
+    # Save model and metrics
+    with open(os.path.join(name + ".pickle"), 'wb') as f:
+      pickle.dump(GS1, f)
 
 if __name__ == '__main__':
     __main__()
