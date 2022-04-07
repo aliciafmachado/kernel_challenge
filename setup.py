@@ -20,18 +20,14 @@ setuptools.setup(
         "License :: OSI Approved :: MIT License",
     ],
     package_dir={"kernel_challenge": "src"},
-    # where="src"
     packages=setuptools.find_packages(),
     python_requires=">=3.9",
-    # install_requires=[
-    #             'gym',
-    #             'matplotlib',
-    #             'numpy',
-    #             'jax',
-    #             'dm-acme',
-    #             'chex',
-    #             'dm_env',
-    #         ],
+    install_requires=[
+                'matplotlib',
+                'numpy',
+                'cvxopt',
+                'scipy',
+            ],
 )
 
 print(setuptools.find_packages())

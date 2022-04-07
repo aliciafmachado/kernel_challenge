@@ -6,30 +6,23 @@ from util.kernels import RBF
 from methods.kernel_pca import Kernel_PCA
 import numpy as np
 import os
-import util.utils as ut
 
 
 def main():
-    save_path = "../results/unsupervised_learning/"
-    Xtr_, Ytr, Xte_ = read_data('../data/')
-    Xtr_ = ut.images_to_hist(Xtr_, 30, -0.1, 0.1)
-    # Xte_ = ut.images_to_hist(Xte_, 30, -0.1, 0.1)
-    # kernel_fn = Linear().kernel
+    save_path = "results/unsupervised_learning/"
+    data_path = 'data/'
+    Xtr_, Ytr, _ = read_data(data_path)
     sigma = 10
     kernel_fn = RBF(sigma=sigma).kernel
 
-    # Normalize first
+    # Normalize first (when not using chi2 or GHI)
     mean = np.mean(Xtr_, axis=0)
     std = np.std(Xtr_, axis=0)
     Xtr_n = (Xtr_ - mean) / std
 
-    # Apply the same to test
-    # Xte_n = (Xte_ - mean) / std
-
     # Apply PCA
     pca = Kernel_PCA(n_components=100, kernel_fn=kernel_fn)
     Xtr_tr = pca.fit_and_transform(Xtr_n)
-    # Xte_tr = pca.transform(Xte_n)
 
     # Save plot of eigenvalues and the first two dimensions after transformation
     plt.plot(pca.eigenvals)
