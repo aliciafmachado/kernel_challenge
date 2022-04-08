@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from src.methods.one_vs_rest import MulticlassSVC
 from src.util.kernels import RBF, Polynomial, Intersection, Linear, Chi2
-from sklearn.model_selection import train_test_split
 import src.util.utils as ut
 from src.methods.kernel_pca import *
 from src.methods.oriented_edge_features import *
@@ -22,7 +21,7 @@ write_test_results = True
 experiment_name = 'best_model'
 
 if not write_test_results:
-    Xtr, Xte, Ytr, Yte = train_test_split(Xtr, Ytr, test_size=0.2, shuffle=True)
+    Xtr, Xte, Ytr, Yte = ut.train_test_split(Xtr, Ytr, test_size=0.2, shuffle=True)
 
 # Transform into multilevel energy features
 Xtr, Ytr = ut.augment_data(Xtr, Ytr)
